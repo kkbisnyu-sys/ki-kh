@@ -51856,13 +51856,7 @@ return vm
 end
 return nil
 end
--- Hang guard (2026-11-24: two Rivals clients were killed by Roblox's "Script has run for over 15 seconds" watchdog
--- inside ClientItem.new -> this hook). The stack scan has a time budget and the hook cannot re-enter itself; after
--- 3 overruns the hook switches itself off for the rest of the server instead of freezing the client.
-local vmBusy = false
-local VM_SCAN_BUDGET = 0.05
 local function findViewModel()
-local scanStart = os.clock()
 if vmSpot ~= nil then
 local ok, slot = pcall(debug.getstack, vmSpot[1], vmSpot[2])
 if ok then
@@ -51873,17 +51867,11 @@ end
 end
 end
 for level = 3, 12 do
-if os.clock() - scanStart > VM_SCAN_BUDGET then
-return nil, true
-end
 local ok, frame = pcall(debug.getstack, level)
 if not ok or type(frame) ~= "table" then
 break
 end
 for i, slot in pairs(frame) do
-if os.clock() - scanStart > VM_SCAN_BUDGET then
-return nil, true
-end
 local vm = viewModelOf(slot)
 if vm ~= nil then
 vmSpot = { level, i }
@@ -51891,9 +51879,6 @@ return vm
 end
 end
 for i, slot in pairs(frame) do
-if os.clock() - scanStart > VM_SCAN_BUDGET then
-return nil, true
-end
 if type(slot) == "table" then
 local n = 0
 for j, inner in next, slot do
@@ -51971,25 +51956,8 @@ setmetatable(arg2, v125)
 -- update reshuffles the VM registers (v1083: slot 1 became a number, "attempt to index number with number",
 -- and the error killed ClientItem.new, so with the skin changer on no weapon was ever built). Search the frames
 -- instead, and if it cannot be found leave the item unskinned rather than break it.
-if vmBusy or K.__vmHookOff then
-return
-end
-vmBusy = true
-local hookStart = os.clock()
-local okFind, viewModel, scanSlow = pcall(findViewModel)
-if not okFind then
-viewModel = nil
-end
-if scanSlow then
-K.__vmHookSlows = (K.__vmHookSlows or 0) + 1
-KQ("[Kicia Rebuild] skin changer: ViewModel stack scan over budget (" .. K.__vmHookSlows .. "/3)")
-if K.__vmHookSlows >= 3 then
-K.__vmHookOff = true
-KQ("[Kicia Rebuild] skin changer: hook switched off for this server (stack scan kept running too long)")
-end
-end
+local viewModel = findViewModel()
 if viewModel == nil then
-vmBusy = false
 return
 end
 -- anything below failing must not take the weapon down with it
@@ -52039,10 +52007,6 @@ if v129 ~= nil then
 v128[v116.encode("Charm")] = v129
 end
 end)
-vmBusy = false
-if os.clock() - hookStart > 0.5 then
-KQ("[Kicia Rebuild] skin changer: one weapon took " .. string.format("%.2f", os.clock() - hookStart) .. "s to skin")
-end
 if not okApply and not K.__vmApplyWarned then
 K.__vmApplyWarned = true
 KQ("[Kicia Rebuild] skin changer: applying a skin failed: " .. tostring(errApply))
@@ -75226,21 +75190,6 @@ end
 if not ok then error(err,0);end
 end
 current:SetVisible(visible,true)
--- The LY logo is written to disk and loaded with getcustomasset. When that fails the menu silently shows the stock KH
--- icon; retry in the background and rebuild the menu once the logo is available (once per session, ~1 minute).
-if K.LithiumLogo==nil and not K.LogoRetrying then
-K.LogoRetrying=true
-task.spawn(function()
-for _=1,20 do
-task.wait(3)
-local okl=pcall(K.LoadLogo)
-if okl and K.LithiumLogo~=nil then
-pcall(function() K.RebuildMenu(K.UIMode()) end)
-return
-end
-end
-end)
-end
 end
 K.RebuildMenu=function(mode)
 local wasVisible=current==nil or current.Visible==true
