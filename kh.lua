@@ -51856,7 +51856,13 @@ return vm
 end
 return nil
 end
+-- Hang guard (2026-11-24: two Rivals clients were killed by Roblox's "Script has run for over 15 seconds" watchdog
+-- inside ClientItem.new -> this hook). The stack scan has a time budget and the hook cannot re-enter itself; after
+-- 3 overruns the hook switches itself off for the rest of the server instead of freezing the client.
+local vmBusy = false
+local VM_SCAN_BUDGET = 0.05
 local function findViewModel()
+local scanStart = os.clock()
 if vmSpot ~= nil then
 local ok, slot = pcall(debug.getstack, vmSpot[1], vmSpot[2])
 if ok then
@@ -51867,11 +51873,17 @@ end
 end
 end
 for level = 3, 12 do
+if os.clock() - scanStart > VM_SCAN_BUDGET then
+return nil, true
+end
 local ok, frame = pcall(debug.getstack, level)
 if not ok or type(frame) ~= "table" then
 break
 end
 for i, slot in pairs(frame) do
+if os.clock() - scanStart > VM_SCAN_BUDGET then
+return nil, true
+end
 local vm = viewModelOf(slot)
 if vm ~= nil then
 vmSpot = { level, i }
@@ -51879,6 +51891,9 @@ return vm
 end
 end
 for i, slot in pairs(frame) do
+if os.clock() - scanStart > VM_SCAN_BUDGET then
+return nil, true
+end
 if type(slot) == "table" then
 local n = 0
 for j, inner in next, slot do
@@ -51956,8 +51971,25 @@ setmetatable(arg2, v125)
 -- update reshuffles the VM registers (v1083: slot 1 became a number, "attempt to index number with number",
 -- and the error killed ClientItem.new, so with the skin changer on no weapon was ever built). Search the frames
 -- instead, and if it cannot be found leave the item unskinned rather than break it.
-local viewModel = findViewModel()
+if vmBusy or K.__vmHookOff then
+return
+end
+vmBusy = true
+local hookStart = os.clock()
+local okFind, viewModel, scanSlow = pcall(findViewModel)
+if not okFind then
+viewModel = nil
+end
+if scanSlow then
+K.__vmHookSlows = (K.__vmHookSlows or 0) + 1
+KQ("[Kicia Rebuild] skin changer: ViewModel stack scan over budget (" .. K.__vmHookSlows .. "/3)")
+if K.__vmHookSlows >= 3 then
+K.__vmHookOff = true
+KQ("[Kicia Rebuild] skin changer: hook switched off for this server (stack scan kept running too long)")
+end
+end
 if viewModel == nil then
+vmBusy = false
 return
 end
 -- anything below failing must not take the weapon down with it
@@ -52007,6 +52039,10 @@ if v129 ~= nil then
 v128[v116.encode("Charm")] = v129
 end
 end)
+vmBusy = false
+if os.clock() - hookStart > 0.5 then
+KQ("[Kicia Rebuild] skin changer: one weapon took " .. string.format("%.2f", os.clock() - hookStart) .. "s to skin")
+end
 if not okApply and not K.__vmApplyWarned then
 K.__vmApplyWarned = true
 KQ("[Kicia Rebuild] skin changer: applying a skin failed: " .. tostring(errApply))
@@ -75190,6 +75226,21 @@ end
 if not ok then error(err,0);end
 end
 current:SetVisible(visible,true)
+-- The LY logo is written to disk and loaded with getcustomasset. When that fails the menu silently shows the stock KH
+-- icon; retry in the background and rebuild the menu once the logo is available (once per session, ~1 minute).
+if K.LithiumLogo==nil and not K.LogoRetrying then
+K.LogoRetrying=true
+task.spawn(function()
+for _=1,20 do
+task.wait(3)
+local okl=pcall(K.LoadLogo)
+if okl and K.LithiumLogo~=nil then
+pcall(function() K.RebuildMenu(K.UIMode()) end)
+return
+end
+end
+end)
+end
 end
 K.RebuildMenu=function(mode)
 local wasVisible=current==nil or current.Visible==true
@@ -96015,25 +96066,189 @@ local boot = (function()
         end
     end
 
-    -- Re-run After Teleport (UE style, from the decompiled UE: protos 255 / 274 and the queue call in proto 1):
-    --   * the toggle only writes / deletes the marker file LOAD_PERSISTENT (Silent Load: LOAD_SILENTLY);
-    --   * once per server, while loading, the loader is queued with queue_on_teleport - and only when a
-    --     script_key exists (no key, nothing is queued). The queue does not depend on the toggle;
-    --   * the queued loader checks isfile("LOAD_PERSISTENT") itself when it runs in the next server, sets
-    --     script_key / SILENT and runs the Luarmor loader. That loads this script again, which queues the next one.
+    -- Re-run After Teleport (LYHub style): the loader is queued once per server as soon as the
+    -- toggle is on (the game moves you into matches without always firing OnTeleport). The
+    -- queued loader waits for the game to finish loading and reads a flag file when it runs, so
+    -- turning the toggle off afterwards still cancels the re-run.
     do
-        -- per-account marker files (the old shared LOAD_PERSISTENT / LOAD_SILENTLY made every account follow
-        -- whichever one wrote last); the paths are baked into the queued loader below
+        -- UE style: persistence is the marker file LOAD_PERSISTENT (written while the toggle is on,
+        -- deleted when it is off) and LOAD_SILENTLY marks a silent load. The queued loader checks
+        -- isfile("LOAD_PERSISTENT") itself, so turning the toggle off still cancels the re-run.
+        -- per-account marker files / loader file (11/21 fix, kept): the old shared names made every account follow whichever wrote last
         local PERSIST_FILE = K.AccountDir .. "/LOAD_PERSISTENT"
         local SILENT_FILE = K.AccountDir .. "/LOAD_SILENTLY"
-        -- GITHUB build: the re-run loads this script straight from GitHub, no Luarmor and no script_key;
-        -- getgenv().KiciaRerunUrl replaces the address
-        local RERUN_DEFAULT_LOADER = "https://raw.githubusercontent.com/kbisnyu-cpu/HEHE/main/kh.lua"
-        local RERUN_TEMPLATE = "\t\tif (not isfile(\"" .. PERSIST_FILE .. "\")) then\n\t\t\treturn;\n\t\tend;\n"
-            .. "\t\tSILENT = isfile(\"" .. SILENT_FILE .. "\");\n"
-            .. "\t\tpcall(function() getgenv().SILENT = SILENT; end);\n"
-            .. "\t\tloadstring(game:HttpGet(\"%s\"))();\n\t\t"
-
+        local LOADER_FILE = K.AccountDir .. "/rerun_loader.lua"
+        -- What the queued loader runs. getgenv().KiciaRerunFile (a workspace file) wins if set;
+        -- otherwise the script is downloaded from the public GitHub repo kkbisnyu-sys/ki-kh (branch main, kh.lua),
+        -- so Re-run works without a local copy of the script. A raw.githubusercontent.com address is sent with
+        -- a GitHub token when one exists (workspace file kiciarebuild/github_token.txt, or
+        -- getgenv().KiciaGithubToken), which is only needed for a private repo; with no token it is a plain
+        -- game:HttpGet. The token is never written into this script. getgenv().KiciaRerunUrl overrides the
+        -- address (e.g. a private repo together with a token).
+        local RERUN_URL = getgenv().KiciaRerunUrl
+            or "https://raw.githubusercontent.com/kkbisnyu-sys/ki-kh/main/kh.lua"
+        local RERUN_LOADER = [[
+if not isfile("LOAD_PERSISTENT") then return end
+local _env = (getgenv and getgenv()) or _G
+local _job = tostring(game.JobId)
+-- One loader per server. The script queues a loader and every loader re-queues itself, so one teleport can run
+-- several (the log showed up to 4 in the same server, each starting the script). getgenv() is not one shared table
+-- in Real and JobId is often still "" this early, so the claim is an Instance in the hidden UI container, which is
+-- new for every server and seen by every chunk. Check and claim happen with no yield in between.
+local _hui = nil
+pcall(function() _hui = gethui and gethui() end)
+if typeof(_hui) ~= "Instance" then _hui = game:GetService("CoreGui") end
+local function _find(name)
+    local found = nil
+    pcall(function() found = _hui:FindFirstChild(name) end)
+    if found == nil then pcall(function() found = game:GetService("CoreGui"):FindFirstChild(name) end) end
+    return found
+end
+if _find("KiciaRerunClaim") ~= nil then return end
+do
+    local _claim = Instance.new("Folder")
+    _claim.Name = "KiciaRerunClaim"
+    _claim.Parent = _hui
+end
+_env.__KiciaRerunJob = _job
+_env.SILENT = isfile("LOAD_SILENTLY")
+-- trace of what the loader did, kept in kiciarebuild/logs/rerun_loader.log (survives crashes)
+local function _log(m)
+    pcall(function()
+        appendfile("kiciarebuild/logs/rerun_loader.log", os.date("%%H:%%M:%%S") .. " job=" .. _job .. " " .. m .. "\n")
+    end)
+end
+_log("loader started")
+-- Queue the next hop right away. Waiting for the game and the script to load takes a while, and a
+-- teleport inside that window would otherwise find nothing queued and end the chain. (The loader's
+-- own source is kept in a file by the script, because a queued chunk cannot read its own text.)
+do
+    local _q = queue_on_teleport or queueonteleport
+        or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+    local _self = "kiciarebuild/rerun_loader.lua"
+    if _q and isfile(_self) then pcall(function() _q(readfile(_self)) end) end
+end
+local function waitFor(cond, timeout)
+    local t0 = tick()
+    while not cond() and tick() - t0 < timeout do task.wait(0.25) end
+    return cond()
+end
+if not game:IsLoaded() then game.Loaded:Wait() end
+local _lp = game:GetService("Players").LocalPlayer
+if not _lp then repeat task.wait() _lp = game:GetService("Players").LocalPlayer until _lp end
+waitFor(function()
+    local c = _lp.Character
+    return c and c:FindFirstChildOfClass("Humanoid") and c:FindFirstChild("HumanoidRootPart")
+end, 60)
+waitFor(function() return game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") end, 30)
+waitFor(function()
+    local scripts = _lp:FindFirstChild("PlayerScripts")
+    local controllers = scripts and scripts:FindFirstChild("Controllers")
+    local gui = _lp:FindFirstChild("PlayerGui")
+    return controllers and controllers:FindFirstChild("FighterController") and gui and gui:FindFirstChild("MainGui")
+end, 45)
+local _cp = game:GetService("ContentProvider")
+local _quiet, _t0 = 0, tick()
+while _quiet < 6 and tick() - _t0 < 40 do
+    if _cp.RequestQueueSize == 0 then _quiet += 1 else _quiet = 0 end
+    task.wait(0.25)
+end
+task.wait(2)
+if not isfile("LOAD_PERSISTENT") then return end
+local _file = %q
+local _url = %q
+-- the cached copy is kept per address, so a copy fetched from an old loader URL is never run for a new one
+local _h = 0
+for _i = 1, #_url do _h = (_h * 31 + string.byte(_url, _i)) %% 4294967296 end
+local _cache = "kiciarebuild/rerun_cache_" .. _h .. ".lua"
+local function _fetch()
+    local ok, res
+    if _file ~= "" then
+        ok, res = pcall(readfile, _file)
+    elseif string.find(_url, "raw.githubusercontent.com", 1, true) then
+        -- GitHub raw address: with a token (kiciarebuild/github_token.txt) the request carries it, which a
+        -- private repo needs; without one, or if that request fails, a plain HttpGet (public repos)
+        local _tok = _env.KiciaGithubToken
+        if (not _tok or _tok == "") and isfile("kiciarebuild/github_token.txt") then
+            local okT, t = pcall(readfile, "kiciarebuild/github_token.txt")
+            if okT and type(t) == "string" then _tok = string.gsub(t, "[\r\n\t ]", "") end
+        end
+        local _req = request or http_request or (syn and syn.request) or (fluxus and fluxus.request)
+        if _req and _tok and _tok ~= "" then
+            local okR, resp = pcall(_req, { Url = _url, Method = "GET", Headers = { Authorization = "token " .. _tok, ["User-Agent"] = "KiciaRerun" } })
+            if okR and type(resp) == "table" and resp.StatusCode == 200 then
+                ok, res = true, resp.Body
+            else
+                _log("github fetch with token failed: " .. tostring(okR and type(resp) == "table" and resp.StatusCode or resp))
+            end
+        end
+        if not ok then
+            ok, res = pcall(game.HttpGet, game, _url)
+        end
+    else
+        ok, res = pcall(game.HttpGet, game, _url)
+    end
+    if ok and type(res) == "string" and res ~= "" then
+        -- keep the last good copy, used below when the host cannot be reached
+        if _file == "" then pcall(writefile, _cache, res) end
+        return res
+    end
+    return nil
+end
+-- Up to 4 rounds. Each round: fetch (8 tries, growing waits), else the cached copy of the last good fetch;
+-- then run it and wait for the script to report in (it sets getgenv().KiciaRebuild right at its top). If it
+-- never does (request blocked, key check failed, compile error), the next round tries again. A script that
+-- did start is never run a second time.
+_job = tostring(game.JobId)
+_env.__KiciaRerunJob = _job
+-- the executor's auto-execute folder (or the user) may already have started the script while we waited for the game
+local function _running()
+    return _find("KiciaRebuildInstance") ~= nil
+end
+if _running() then _log("script already running, not starting a second copy") return end
+local _before = _env.KiciaRebuild
+for _round = 1, 4 do
+    local _src
+    for i = 1, 8 do
+        _src = _fetch()
+        if _src then break end
+        task.wait(math.min(2 * i, 10))
+    end
+    if not _src and _file == "" and isfile(_cache) then
+        local ok, res = pcall(readfile, _cache)
+        if ok and type(res) == "string" and res ~= "" then _src = res _log("round " .. _round .. ": using cached copy") end
+    end
+    if _running() then _log("script started elsewhere, stopping") return end
+    if _src then
+        local fn = loadstring(_src)
+        if fn then
+            _log("round " .. _round .. ": running the script")
+            task.spawn(fn)
+            local t0 = tick()
+            local function _reported() return _running() or (_env.KiciaRebuild ~= nil and _env.KiciaRebuild ~= _before) end
+            while tick() - t0 < 120 and not _reported() do
+                task.wait(0.5)
+            end
+            if _reported() then
+                _log("script reported in after " .. math.floor(tick() - t0) .. " s")
+                return
+            end
+            _log("round " .. _round .. ": script did not report in within 120 s")
+        else
+            _log("round " .. _round .. ": the downloaded source did not compile")
+        end
+    else
+        _log("round " .. _round .. ": no source (download failed, no cache)")
+    end
+    task.wait(3)
+    if not isfile("LOAD_PERSISTENT") then _log("marker gone, stopping") return end
+end
+_log("gave up after 4 rounds")
+_env.__KiciaRerunJob = nil
+pcall(function() _find("KiciaRerunClaim"):Destroy() end)
+]]
+        -- the loader text names the marker files and its own file literally; point them at this account's files
+        RERUN_LOADER = RERUN_LOADER:gsub('"LOAD_PERSISTENT"', function() return string.format("%q", PERSIST_FILE) end):gsub('"LOAD_SILENTLY"', function() return string.format("%q", SILENT_FILE) end):gsub('"kiciarebuild/rerun_loader.lua"', function() return string.format("%q", LOADER_FILE) end)
         local queueFn = K.fn("queue_on_teleport") or K.fn("queueonteleport")
         if queueFn == nil then
             -- some executors only expose it under their own table
@@ -96043,86 +96258,112 @@ local boot = (function()
                 if type(q) == "function" then queueFn = q end
             end)
         end
-        local isf, wrf, dlf, mkf = K.fn("isfile"), K.fn("writefile"), K.fn("delfile"), K.fn("makefolder")
+        local wrf, mkf, isf = K.fn("writefile"), K.fn("makefolder"), K.fn("isfolder")
+        local queuedJob = nil
 
         local function rerunEnabled()
             local ok, enabled = pcall(function() return store.Data.AutoExecuteScript.Enabled end)
             return ok and enabled == true
         end
-        local function setRerunToggle(value)
-            pcall(store.Set, store, { "AutoExecuteScript", "Enabled" }, value)
-            if rerunEnabled() ~= value then
-                pcall(function() store.Data.AutoExecuteScript.Enabled = value end)
+
+        -- Started by the queued loader (it stamps this server's JobId, and LOAD_PERSISTENT is still there, which
+        -- means the toggle was on when the player left): carry the toggle over. The toggle lives in the config, so
+        -- without this a config that was saved before the toggle was switched on (or no auto-load at all) reads
+        -- "off" here, the first sync deletes LOAD_PERSISTENT and the chain ends after a single teleport.
+        do
+            local isfile_ = K.fn("isfile")
+            local okEnv, jobMark = pcall(function() return getgenv().__KiciaRerunJob end)
+            local job = tostring(game.JobId)
+            -- getgenv() is not reliably shared in Real, so the loader's claim Instance counts too
+            local claimed = okEnv and job ~= "" and jobMark == job
+            if not claimed then
+                pcall(function()
+                    local hui = K.fn("gethui") and K.fn("gethui")()
+                    claimed = (typeof(hui) == "Instance" and hui:FindFirstChild("KiciaRerunClaim") ~= nil)
+                        or game:GetService("CoreGui"):FindFirstChild("KiciaRerunClaim") ~= nil
+                end)
             end
-        end
-        local function markerOn()
-            if not isf then return false end
-            local ok, has = pcall(isf, PERSIST_FILE)
-            return ok and has == true
-        end
-
-        -- the marker file is the truth: it is still there when the player left with the toggle on, and the config
-        -- (which may not have loaded, or was saved before the toggle existed) must not switch the re-run off
-        if markerOn() and not rerunEnabled() then setRerunToggle(true) end
-
-        -- Silent Load is saved in this account's general.json; mirror it into this account's marker file
-        local function syncSilentMarker()
-            local silent = stateData ~= nil and stateData.SilentLoad == true
-            if silent then
-                if wrf then pcall(wrf, SILENT_FILE, "") end
-            else
-                if dlf then pcall(dlf, SILENT_FILE) end
-            end
-        end
-        syncSilentMarker()
-
-        -- the toggle only writes / deletes the marker (UE: proto 255)
-        local function syncMarker(enabled)
-            if enabled then
-                if wrf then pcall(wrf, PERSIST_FILE, "") end
-            else
-                if dlf then pcall(dlf, PERSIST_FILE) end
+            if claimed and isfile_ and isfile_(PERSIST_FILE) and not rerunEnabled() then
+                pcall(store.Set, store, { "AutoExecuteScript", "Enabled" }, true)
+                if not rerunEnabled() then
+                    pcall(function() store.Data.AutoExecuteScript.Enabled = true end)
+                end
             end
         end
 
-        -- the Luarmor key: where the loader that started this script left it
-        local function rerunKey()
-            local key
-            pcall(function() key = getgenv().script_key end)
-            if type(key) ~= "string" or key == "" then pcall(function() key = _G.script_key end) end
-            if type(key) ~= "string" or key == "" then pcall(function() key = script_key end) end
-            if type(key) == "string" and key ~= "" then return key end
-            return nil
-        end
-
-        -- queue once for this server (UE: proto 1, pcall(queue_on_teleport, template:format(script_key)))
-        local queued = false
-        local function queueLoader()
-            if queued then return end
-            if type(queueFn) ~= "function" then
-                if rerunEnabled() then KQ("[Kicia Rebuild] Re-run After Teleport: executor has no queue_on_teleport") end
+        local function sync()
+            local enabled = rerunEnabled()
+            if not (wrf and queueFn) then
+                if enabled then
+                    warn("[Kicia Rebuild] Re-run After Teleport: executor has no queue_on_teleport / writefile")
+                end
                 return
             end
-            local url = getgenv().KiciaRerunUrl
-            if type(url) ~= "string" or url == "" then url = RERUN_DEFAULT_LOADER end
-            if pcall(queueFn, string.format(RERUN_TEMPLATE, url)) then
-                queued = true
-                K.Log("rerun", "loader queued")
+            local file = getgenv().KiciaRerunFile
+            local isfile_ = K.fn("isfile")
+            if enabled and file and isfile_ and not isfile_(file) then
+                warn("[Kicia Rebuild] Re-run After Teleport: file `" .. file .. "` not found in the workspace")
+                enabled = false
+            end
+            if enabled then
+                pcall(wrf, PERSIST_FILE, "")
             else
-                KQ("[Kicia Rebuild] Re-run After Teleport: queue_on_teleport failed")
+                local dlf = K.fn("delfile")
+                if dlf then pcall(dlf, PERSIST_FILE) end
+            end
+            local job = tostring(game.JobId)
+            if enabled and queuedJob ~= job then
+                local src = RERUN_LOADER:format(file or "", RERUN_URL)
+                local key = getgenv().script_key
+                if type(key) == "string" and key ~= "" then
+                    src = string.format("script_key=%q; ", key) .. src
+                end
+                -- the loader re-queues itself from this file as soon as it starts (see RERUN_LOADER)
+                pcall(wrf, LOADER_FILE, src)
+                for attempt = 1, 3 do
+                    if pcall(queueFn, src) then
+                        queuedJob = job
+                        K.Log("rerun", "loader queued for job " .. job .. " (attempt " .. attempt .. ")")
+                        break
+                    end
+                    K.Log("rerun", "queue_on_teleport failed (attempt " .. attempt .. ")")
+                    task.wait(0.25)
+                end
             end
         end
-        queueLoader()
 
-        -- Re-run After Teleport is a config toggle, so mirror it into the marker file
+        local conn = player.OnTeleport:Connect(function(state)
+            if state ~= Enum.TeleportState.Failed then
+                -- a queue only lasts one teleport: allow queueing again for the next one
+                if state == Enum.TeleportState.Started then queuedJob = nil end
+                sync()
+            end
+        end)
+        K.onUnload(function() conn:Disconnect() end)
+
         task.spawn(function()
             local last = nil
+            -- When the auto-load failed, the toggle only reads "off" because the saved config was not applied.
+            -- The first sync must not treat that as the user turning it off (it deletes LOAD_PERSISTENT and
+            -- silently cancels the re-run), so start from the current state; real changes still sync.
+            if autoLoadFailed and not rerunEnabled() then
+                last = false
+            end
+            -- Watchdog while the toggle is on: every 5 s make sure this server's loader really is queued
+            -- (the queue call can fail) and that the marker file still exists (another client or a manual
+            -- cleanup can delete it), and repair whichever is missing.
+            local lastCheck = 0
             while not K.destroyed do
                 local now = rerunEnabled()
                 if now ~= last then
                     last = now
-                    syncMarker(now)
-                    if now and not queued then queueLoader() end
+                    sync()
+                elseif now and os.clock() - lastCheck >= 5 then
+                    lastCheck = os.clock()
+                    local isfile_ = K.fn("isfile")
+                    if queuedJob ~= tostring(game.JobId) or (isfile_ and not isfile_(PERSIST_FILE)) then
+                        sync()
+                    end
                 end
                 task.wait(1)
             end
