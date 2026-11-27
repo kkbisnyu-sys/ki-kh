@@ -12233,6 +12233,1483 @@ function K.onUnload(f)
     K.cleanups[#K.cleanups + 1] = f
 end
 
+K.Mark("menu language")
+--==========================================================================
+--  Menu language: English / 繁體中文 (Settings > General > "Language / 語言").
+--  How it works: the page builders hand every text to the menu in spec tables (Label, Title, Description,
+--  Tooltip, Placeholder, ActionText, Options / Labels ...). L.attach(menu) wraps the Add* / Grid / Dialog /
+--  SetLabel / _make methods of every menu class it meets (all 7 forms: Classic, Starlight, Lite, Matcha, KH V2,
+--  Setsuna, Setsuna Drop), so those texts go through K.T() before the form draws them.
+--  Dropdowns keep their English VALUES; only the Labels (what is shown) are translated, so configs, keybinds
+--  and every saved value are the same in both languages. Text a form draws by itself (search box, confirm
+--  buttons, the HUDs) calls K.T() where it is made.
+--  A string with no translation stays English; while Chinese is on it is written to
+--  kiciarebuild/l10n_missing.txt so it can be added to L.zh below.
+--  RULE FOR NEW FEATURES: every new Label / Title / Tooltip / Description / dropdown choice / HUD text gets
+--  its Traditional Chinese in L.zh (plain words a player understands, not a literal word-by-word copy).
+--  The choice is kept in kiciarebuild/language.txt ("en" / "zh"); getgenv().LxYLang overrides it.
+--==========================================================================
+do
+    local L = { lang = "en" }
+    K.L10N = L
+    local LANG_FILE = "kiciarebuild/language.txt"
+    local MISSING_FILE = "kiciarebuild/l10n_missing.txt"
+
+    -- English -> Traditional Chinese. Keys are the exact English text the menu shows.
+    L.zh = (function() return {
+        ["Player ESP"] = "玩家透視",
+        ["Esp"] = "透視",
+        ["Enable ESP"] = "啟用透視",
+        ["Main"] = "主要",
+        ["Box Fit"] = "方框貼合",
+        ["Static"] = "固定",
+        ["Dynamic"] = "動態",
+        ["Text"] = "文字",
+        ["Use Display Names"] = "顯示暱稱 (Display Name)",
+        ["Font"] = "字型",
+        ["Font Size"] = "字體大小",
+        ["Text Case"] = "大小寫",
+        ["Standard"] = "原樣",
+        ["UPPERCASE"] = "全部大寫",
+        ["lowercase"] = "全部小寫",
+        ["Text Surround"] = "文字外框符號",
+        ["None"] = "無",
+        ["Flags"] = "標籤",
+        ["Flag Font"] = "標籤字型",
+        ["Flag Font Size"] = "標籤字體大小",
+        ["Flag Text Case"] = "標籤大小寫",
+        ["Flag Surround"] = "標籤外框符號",
+        ["Scale With Distance"] = "依距離縮放",
+        ["Reference Distance"] = "基準距離",
+        ["Style"] = "樣式",
+        ["Full"] = "完整",
+        ["Corner"] = "四角",
+        ["Health Bar"] = "血條",
+        ["Color Mode"] = "顏色模式",
+        ["Solid"] = "單色",
+        ["Gradient"] = "漸層",
+        ["Reactive"] = "依血量變色",
+        ["Ammo Bar"] = "彈藥條",
+        ["Chams"] = "人物上色 (Chams)",
+        ["Kind"] = "類型",
+        ["Legacy"] = "舊版",
+        ["Highlight"] = "高亮",
+        ["Fill"] = "填色",
+        ["Outline"] = "外框",
+        ["Glow"] = "發光",
+        ["Thickness"] = "粗細",
+        ["Shape"] = "形狀",
+        ["Cross"] = "十字",
+        ["Circle"] = "圓形",
+        ["Diamond"] = "菱形",
+        ["Filled"] = "實心",
+        ["From"] = "起點",
+        ["Bottom"] = "底部",
+        ["Center"] = "中間",
+        ["Top"] = "頂部",
+        ["Mouse"] = "滑鼠",
+        ["To"] = "終點",
+        ["Feet"] = "腳",
+        ["Head"] = "頭",
+        ["Outline Thickness"] = "外框粗細",
+        ["Box"] = "方框",
+        ["Filled Box"] = "實心方框",
+        ["Health Number"] = "血量數字",
+        ["Held Weapon"] = "手持武器",
+        ["Win Streak"] = "連勝",
+        ["Deflecting"] = "格擋中",
+        ["Skeleton"] = "骨架",
+        ["Head Marker"] = "頭部標記",
+        ["Tracer"] = "連線",
+        ["Enemy"] = "敵人",
+        ["Teammates"] = "隊友",
+        ["Transparency"] = "透明度",
+        ["Name"] = "名字",
+        ["Distance"] = "距離",
+        ["Weapon"] = "武器",
+        ["Division HUD"] = "準星資訊面板",
+        ["Ammo, health, shield, WASD keys and speed under the crosshair"] = "在準星下方顯示彈藥、血量、護盾、WASD 按鍵和移動速度",
+        ["Follow Muzzle"] = "跟著槍口",
+        ["Tracks the gun muzzle on screen (like the FOV circle follows its target); without a gun it stays at the screen centre"] = "跟著畫面上的槍口移動(就像 FOV 圈跟著目標);沒拿槍時停在畫面正中間",
+        ["Smoothing"] = "平滑度",
+        ["3D Mode"] = "3D 模式",
+        ["Draw the HUD as a hologram in the world (perspective, tilt, parallax) instead of a flat overlay"] = "把面板畫成立體全息投影(有透視、傾斜、視差),而不是平面貼在畫面上",
+        ["Tilt Yaw"] = "左右傾斜",
+        ["Tilt Pitch"] = "上下傾斜",
+        ["Ammo"] = "彈藥",
+        ["Health"] = "血量",
+        ["Shield"] = "護盾",
+        ["Shown only when the game exposes a shield / armor value"] = "只有遊戲有護盾/護甲數值時才會顯示",
+        ["WASD Keys"] = "WASD 按鍵",
+        ["Speed"] = "速度",
+        ["Scale (%)"] = "縮放 (%)",
+        ["Offset X"] = "X 偏移",
+        ["Offset Y"] = "Y 偏移",
+        ["Team HUD"] = "隊伍資訊面板",
+        ["Team / enemy HP, who is winning, every enemy with HP, weapon and status, and the ragebot target. Drag it while the menu is open."] = "顯示我方/敵方總血量、誰領先、每個敵人的血量、武器和狀態,以及暴力自瞄目前的目標。選單打開時可以拖動。",
+        ["Status (Rage / Legit)"] = "狀態(暴力 / 正常)",
+        ["RAGE when KH's Hacker Detector has tagged the enemy (needs Hacker Detector or a ragebot option that runs it)"] = "被 KH 外掛偵測標記的敵人會顯示「暴力」(需要開外掛偵測,或開啟會用到它的暴力自瞄選項)",
+        ["Target"] = "目標",
+        ["Name of the ragebot's current target at the bottom"] = "在底部顯示暴力自瞄目前鎖定的目標名字",
+        ["Position X (%)"] = "水平位置 (%)",
+        ["Position Y (%)"] = "垂直位置 (%)",
+        ["Score HUD"] = "比分面板",
+        ["Your team's score against the enemy's, the time left in the round, the round number, the round state and the lead."] = "顯示雙方比分、本回合剩餘時間、回合數、回合狀態和領先多少。",
+        ["Your team's score against the enemy's, the time left in the round, the round number, the round state and the lead. Drag it while the menu is open."] = "顯示雙方比分、本回合剩餘時間、回合數、回合狀態和領先多少。選單打開時可以拖動。",
+        ["Search..."] = "搜尋...",
+        ["Color"] = "顏色",
+        ["Input"] = "輸入",
+        ["Animation"] = "動畫",
+        ["Alpha Range"] = "透明度範圍",
+        ["Breathing"] = "呼吸燈",
+        ["Key: "] = "按鍵:",
+        ["Key: ..."] = "按鍵:...",
+        ["Keybind"] = "快捷鍵",
+        ["Mode"] = "模式",
+        ["Show in list"] = "顯示在快捷鍵列表",
+        ["Invisible"] = "隱藏",
+        ["Clear Search"] = "清除搜尋",
+        ["KEYBINDS"] = "快捷鍵",
+        ["Done"] = "完成",
+        ["No matches."] = "找不到符合的項目。",
+        ["Ctrl+F"] = "Ctrl+F",
+        ["Always"] = "一直開著",
+        ["Toggle"] = "按一下切換",
+        ["Hold"] = "按住才開",
+        ["Tap"] = "點按",
+        ["Lock"] = "鎖定",
+        ["Accent"] = "主題色",
+        ["Background"] = "背景",
+        ["Element Background"] = "元件背景",
+        ["Selected Tab"] = "選中的分頁",
+        ["Unselected Text"] = "未選中的文字",
+        ["Toggle Circle"] = "開關圓點",
+        ["Toggle Background"] = "開關底色",
+        ["Menu"] = "選單",
+        ["Menu Keybind"] = "開關選單的按鍵",
+        ["Show Keybinds"] = "顯示快捷鍵列表",
+        ["Show Watermark"] = "顯示浮水印",
+        ["Hide Floating Menu Button"] = "隱藏浮動選單按鈕",
+        ["Edit On-screen Keybinds"] = "編輯螢幕上的按鍵",
+        ["Whole-Menu Profiles"] = "整份選單設定檔",
+        ["Transfer"] = "匯入 / 匯出",
+        ["Automation"] = "自動化",
+        ["Config Name"] = "設定檔名稱",
+        ["Name..."] = "名稱...",
+        ["Create Config"] = "建立設定檔",
+        ["Configs"] = "設定檔",
+        ["Refresh List"] = "重新整理列表",
+        ["Load Selected Config"] = "載入選中的設定檔",
+        ["Save to Selected Config"] = "儲存到選中的設定檔",
+        ["Delete Selected Config"] = "刪除選中的設定檔",
+        ["Export to Clipboard"] = "匯出到剪貼簿",
+        ["Copied your current config to the clipboard"] = "已把目前的設定複製到剪貼簿",
+        ["Import (paste config)"] = "匯入(貼上設定)",
+        ["Import Config"] = "匯入設定",
+        ["Auto Save"] = "自動儲存",
+        ["Profile to Auto Save"] = "要自動儲存的設定檔",
+        ["Auto Load"] = "自動載入",
+        ["Profile to Auto Load"] = "要自動載入的設定檔",
+        ["Theme"] = "主題",
+        ["Theme Colors"] = "主題顏色",
+        ["UI Style"] = "選單樣式",
+        ["Classic (default) is the script's own menu. Starlight is built into the script; if it fails, the classic menu is shown for that session."] = "Classic 是腳本原本的選單。Starlight 內建在腳本裡;如果載入失敗,這次會先顯示 Classic 選單。",
+        ["Low-Load Mode"] = "低負載模式",
+        ["Auto (window inactive)"] = "自動(視窗不在前景時)",
+        ["Auto, keep 3D on"] = "自動,保留 3D 畫面",
+        ["Off"] = "關閉",
+        ["Cuts the load when several clients are open: 3D rendering off, lowest graphics, 60 fps cap. Auto = only while this Roblox window is not the active one. Keep 3D on = lower quality and fps cap only. Always = also while the window is active."] = "同時開好幾個 Roblox 時降低負擔:關閉 3D 畫面、畫質調到最低、FPS 鎖 60。自動 = 只有這個 Roblox 視窗不在前景時才啟用。保留 3D 畫面 = 只降畫質和鎖 FPS。一直開著 = 視窗在前景時也啟用。",
+        ["Re-run After Teleport"] = "傳送後自動重新執行",
+        ["Silent Load"] = "靜默載入(不自動開選單)",
+        ["Enable Notifications"] = "啟用通知",
+        ["Position"] = "位置",
+        ["Crosshair Offset"] = "準星偏移",
+        ["Distance from screen center for the Crosshair side. Negative is above, positive below."] = "「準星」位置時離畫面中心的距離。負數在上面,正數在下面。",
+        ["Text Size"] = "文字大小",
+        ["General"] = "一般",
+        ["Config Profiles"] = "設定檔",
+        ["Startup"] = "啟動",
+        ["Notifications"] = "通知",
+        ["Unload LxYHook"] = "卸載 LxYHook",
+        ["Unload"] = "卸載",
+        ["Settings"] = "設定",
+        ["Menu preferences, config management, and theme customization."] = "選單偏好、設定檔管理和主題自訂。",
+        ["TopLeft"] = "左上",
+        ["TopRight"] = "右上",
+        ["BottomLeft"] = "左下",
+        ["BottomRight"] = "右下",
+        ["Crosshair"] = "準星",
+        ["Language"] = "語言",
+        ["Not Reloading"] = "沒在換彈",
+        ["Scoped In"] = "開鏡中",
+        ["Within FOV"] = "在 FOV 範圍內",
+        ["Head %"] = "頭部 %",
+        ["Not Deflecting"] = "沒在格擋",
+        ["Not Shielded"] = "沒開護盾",
+        ["Visible"] = "看得到(沒被擋住)",
+        ["Vulnerable"] = "可被傷害",
+        ["NotReloading"] = "沒在換彈",
+        ["ScopedIn"] = "開鏡中",
+        ["NotDeflecting"] = "沒在格擋",
+        ["NotShielded"] = "沒開護盾",
+        ["WithinFov"] = "在 FOV 範圍內",
+        ["Manipulate"] = "位置操控",
+        ["Manipulation Check"] = "操控檢查",
+        ["OnBestTarget"] = "只對最佳目標",
+        ["OnAllTargets"] = "對所有目標",
+        ["On Best Target"] = "只對最佳目標",
+        ["On All Targets"] = "對所有目標",
+        ["Show Indicator"] = "顯示指示器",
+        ["Hit %DNAME% (%NAME%) for %DMG% in %PART%"] = "打中 %DNAME% (%NAME%) 的 %PART%,造成 %DMG% 傷害",
+        ["Eliminated %DNAME% (%NAME%)"] = "擊殺了 %DNAME% (%NAME%)",
+        [" is hacking"] = " 正在開外掛",
+        ["Anti Katana"] = "反武士刀",
+        ["Enabled"] = "啟用",
+        ["Auto Weapon Ban"] = "自動禁用武器",
+        ["First Ban Choices"] = "第一輪禁用選擇",
+        ["Second Ban Choices"] = "第二輪禁用選擇",
+        ["Setup"] = "設定",
+        ["Slot Editor"] = "欄位編輯",
+        ["Use Map-Specific Loadouts"] = "依地圖使用不同裝備",
+        ["Map"] = "地圖",
+        ["Use Fallback Loadouts"] = "使用備用裝備",
+        ["Loadout Priority (1 highest)"] = "裝備優先順序(1 最優先)",
+        ["Auto Pickup"] = "自動撿取",
+        ["Pickup Types"] = "撿取類型",
+        ["Auto Queue"] = "自動排隊",
+        ["Queue"] = "排隊模式",
+        ["Auto Respawn"] = "自動重生",
+        ["Auto Map Vote"] = "自動投票選地圖",
+        ["Maps to Vote For"] = "要投票的地圖",
+        ["Hacker Detector"] = "外掛偵測",
+        ["Notify"] = "通知",
+        ["Test Popup"] = "測試彈出提示",
+        ["Test"] = "測試",
+        ["Text Color"] = "文字顏色",
+        ["Moderator Detector"] = "管理員偵測",
+        ["Moderator Responses"] = "偵測到管理員時",
+        ["Mod Friends"] = "管理員的好友也算",
+        ["Kick"] = "踢出遊戲",
+        ["ToLobby"] = "回大廳",
+        ["Subspace Tripmines"] = "次元絆雷",
+        ["Auto Trigger"] = "自動引爆",
+        ["Team Trigger"] = "隊友踩到也引爆",
+        ["Rivals Leaderboard"] = "Rivals 排行榜",
+        ["Rivals HUD"] = "Rivals 資訊面板",
+        ["FPS: "] = "FPS:",
+        ["Overlays"] = "畫面疊加",
+        ["Leaderboard (ELO / Level / Win Streak)"] = "排行榜(ELO / 等級 / 連勝)",
+        ["Info HUD (FPS / Ping / Server)"] = "資訊面板(FPS / 延遲 / 伺服器)",
+        ["Hide From Leaderboard"] = "從排行榜隱藏",
+        ["name1, name2"] = "名字1, 名字2",
+        ["Reset Panel Positions"] = "重設面板位置",
+        ["Alerts"] = "提醒",
+        ["Watchlist Join Alerts"] = "關注名單加入提醒",
+        ["Watchlist"] = "關注名單",
+        ["Discord Webhook URL (optional)"] = "Discord Webhook 網址(可不填)",
+        ["Streak Hunter Alerts"] = "高連勝玩家提醒",
+        ["Streak Threshold"] = "連勝門檻",
+        ["Match flow, loadouts, in-match automation, and detection."] = "對戰流程、裝備、對戰中自動化和偵測。",
+        ["Match Flow"] = "對戰流程",
+        ["Automate queueing, voting, bans, and respawns."] = "自動排隊、投票、禁用武器和重生。",
+        ["Auto Loadout"] = "自動裝備",
+        ["Configure map-specific and fallback loadouts."] = "設定各地圖專用裝備和備用裝備。",
+        ["In-Match Automation"] = "對戰中自動化",
+        ["Automate pickups, counters, and tripmines."] = "自動撿東西、反制和絆雷。",
+        ["Detection"] = "偵測",
+        ["Detect hackers and moderators."] = "偵測開外掛的人和管理員。",
+        ["Rivals Helper"] = "Rivals 小幫手",
+        ["Leaderboard, info HUD, watchlist and streak alerts."] = "排行榜、資訊面板、關注名單和連勝提醒。",
+        ["Primary"] = "主武器",
+        ["Secondary"] = "副武器",
+        ["Utility"] = "道具",
+        ["Melee"] = "近戰",
+        ["Loadouts"] = "裝備",
+        ["Types"] = "類型",
+        ["Maps"] = "地圖",
+        ["Moderators"] = "管理員",
+        ["Leaderboard"] = "排行榜",
+        ["Hud"] = "資訊面板",
+        ["Watchlist player found"] = "發現關注名單中的玩家",
+        ["Player found"] = "發現玩家",
+        ["Data Ping"] = "資料延遲",
+        ["Current ELO"] = "目前 ELO",
+        ["Highest ELO"] = "最高 ELO",
+        ["Seasons"] = "賽季",
+        ["Show Targeting Circle"] = "顯示瞄準範圍圈",
+        ["Radius (px)"] = "半徑 (像素)",
+        ["Animated"] = "動畫效果",
+        ["Animation Speed (deg/s)"] = "動畫速度 (度/秒)",
+        ["Follow Target"] = "跟著目標",
+        ["Follow Speed"] = "跟隨速度",
+        ["Follow Damper"] = "跟隨緩衝",
+        ["Snap Distance"] = "吸附距離",
+        ["Centre the FOV circle (and the FOV check) on the gun muzzle instead of the screen centre"] = "把 FOV 圈(和 FOV 判斷)放在槍口,而不是畫面中間",
+        ["Allowed Hitboxes"] = "可瞄準部位",
+        ["Target Filters"] = "目標篩選",
+        ["Aim Point"] = "瞄準點",
+        ["Surface Reduction (%)"] = "表面內縮 (%)",
+        ["Preserve Depth"] = "保持深度",
+        ["Hitbox Selection"] = "部位選擇方式",
+        ["Surface"] = "表面",
+        ["ClosestToCrosshair"] = "離準星最近",
+        ["Random"] = "隨機",
+        ["Closest Point"] = "最近的點",
+        ["Closest to Crosshair"] = "離準星最近",
+        ["Weighted Random"] = "按比例隨機",
+        ["Targeting"] = "目標選擇",
+        ["Targeting FOV"] = "瞄準範圍 (FOV)",
+        ["Activation Rules"] = "啟動條件",
+        ["Reaction Delay (s)"] = "反應延遲 (秒)",
+        ["Switch Delay (s)"] = "換目標延遲 (秒)",
+        ["Priority"] = "優先順序",
+        ["Aim Mode"] = "瞄準方式",
+        ["Linear Speed"] = "拉動速度",
+        ["Smoothing (%)"] = "平滑度 (%)",
+        ["Slows the pull: 0 = full Linear Speed, 100 = almost no pull."] = "讓拉槍變慢:0 = 用完整的拉動速度,100 = 幾乎不拉。",
+        ["Curve Preset"] = "曲線預設",
+        ["AI Speed"] = "AI 速度",
+        ["Spring Speed"] = "彈簧速度",
+        ["Attack Monsters"] = "也打怪物",
+        ["Also aim at the tower monsters (Aimbot and Silent Aim both)."] = "也會瞄塔防模式的怪物(自瞄和靜默自瞄都適用)。",
+        ["Enable Target Lock"] = "啟用目標鎖定",
+        ["Lock Mode"] = "鎖定方式",
+        ["Activation"] = "啟動",
+        ["Target Lock"] = "目標鎖定",
+        ["ClosestDistance"] = "距離最近",
+        ["LowestHealth"] = "血量最少",
+        ["Constant"] = "等速",
+        ["Linear"] = "線性",
+        ["EaseIn"] = "慢慢加速",
+        ["EaseOut"] = "慢慢減速",
+        ["SCurve"] = "S 型曲線",
+        ["ToggleLock"] = "按一下鎖定",
+        ["AutoLock"] = "自動鎖定",
+        ["ManualOnly"] = "只能手動",
+        ["Closest To Crosshair"] = "離準星最近",
+        ["Closest Distance"] = "距離最近",
+        ["Lowest Health"] = "血量最少",
+        ["Ease In"] = "慢慢加速",
+        ["Ease Out"] = "慢慢減速",
+        ["S-Curve"] = "S 型曲線",
+        ["Toggle Lock"] = "按一下鎖定",
+        ["Auto Lock"] = "自動鎖定",
+        ["Manual Only"] = "只能手動",
+        ["Spring"] = "彈簧",
+        ["Curve"] = "曲線",
+        ["Fov"] = "FOV",
+        ["Stroke"] = "描邊",
+        ["Radius"] = "半徑",
+        ["Damper"] = "緩衝",
+        ["Enable Aimbot"] = "啟用自瞄",
+        ["Enable Silent Aim"] = "啟用靜默自瞄",
+        ["Enable Triggerbot"] = "啟用自動開槍",
+        ["Enable Ragebot"] = "啟用暴力自瞄",
+        ["Enable Flickbot"] = "啟用自動甩槍",
+        ["Hold a weapon, then click the pin next to a setting to give that weapon its own value."] = "先拿著一把武器,再點設定旁邊的圖釘,就能讓這把武器有自己的數值。",
+        ["Air"] = "空中",
+        ["Ground"] = "地面",
+        ["Air Allowed Hitboxes"] = "空中時可瞄準部位",
+        ["Ground Allowed Hitboxes"] = "地面時可瞄準部位",
+        ["Manage Sounds"] = "管理音效",
+        ["Add or remove custom sounds."] = "新增或移除自訂音效。",
+        ["Add a Sound"] = "新增音效",
+        ["Enter a name and sound source."] = "輸入名稱和音效來源。",
+        ["Add Sound"] = "新增音效",
+        ["Sound Source"] = "音效來源",
+        ["Id / File name / Url"] = "ID / 檔名 / 網址",
+        ["Remove a Sound"] = "移除音效",
+        ["Select a sound to remove."] = "選擇要移除的音效。",
+        ["Remove Sound"] = "移除音效",
+        ["Remove selected sound?"] = "要移除選中的音效嗎?",
+        ["Confirm"] = "確認",
+        ["Sound"] = "音效",
+        ["The selected sound will be permanently removed."] = "選中的音效會被永久移除。",
+        ["Activation Chance (%)"] = "觸發機率 (%)",
+        ["Triggerbot"] = "自動開槍",
+        ["Release Delay (s)"] = "放開延遲 (秒)",
+        ["Duration"] = "持續時間",
+        ["Material"] = "材質",
+        ["Color1"] = "顏色 1",
+        ["Color2"] = "顏色 2",
+        ["Percentage"] = "百分比",
+        ["Elimination Feedback"] = "擊殺回饋",
+        ["Enable Elimination Feedback"] = "啟用擊殺回饋",
+        ["Play Elimination Sound"] = "播放擊殺音效",
+        ["Elimination Sound"] = "擊殺音效",
+        ["Elimination Volume"] = "擊殺音量",
+        ["Elimination Pitch"] = "擊殺音調",
+        ["Manage Custom Sounds"] = "管理自訂音效",
+        ["Visual Chams"] = "視覺上色",
+        ["Enable Elimination Chams"] = "啟用擊殺上色",
+        ["Elimination Chams Duration"] = "擊殺上色持續時間",
+        ["Elimination Chams Material"] = "擊殺上色材質",
+        ["Flash"] = "閃光",
+        ["Enable Elimination Flash"] = "啟用擊殺閃光",
+        ["Elimination Flash Duration"] = "擊殺閃光持續時間",
+        ["Notification"] = "通知",
+        ["Enable Elimination Notification"] = "啟用擊殺通知",
+        ["Elimination Notification Text"] = "擊殺通知文字",
+        ["Hit Feedback"] = "命中回饋",
+        ["Damage Text"] = "傷害數字",
+        ["Hide Game Damage Numbers"] = "隱藏遊戲原本的傷害數字",
+        ["Blocks the game's own floating damage numbers (and anything else it does on that event), like Unnamed Enhancements. Works with or without Damage Text."] = "擋掉遊戲自己的飄浮傷害數字(以及遊戲在這個事件做的其他事),跟 Unnamed Enhancements 一樣。有沒有開「傷害數字」都能用。",
+        ["Enable Damage Text"] = "啟用傷害數字",
+        ["Floating damage numbers on the enemy: Phantom Forces (Zekton) or Fortnite (Burbank, per-letter pop). Restored from Unnamed Enhancements."] = "在敵人身上飄出傷害數字:Phantom Forces 風格(Zekton 字型)或 Fortnite 風格(Burbank 字型,逐字彈出)。從 Unnamed Enhancements 還原。",
+        ["Damage Text Style"] = "傷害數字樣式",
+        ["Cycle Colors"] = "顏色輪替",
+        ["Original Colors (Phantom Forces)"] = "原版顏色(Phantom Forces)",
+        ["Stack Damage Together (Fortnite)"] = "傷害疊加在一起(Fortnite)",
+        ["Color 1 (head / slash 1 / clone)"] = "顏色 1(爆頭 / 斬擊 1 / 分身)",
+        ["Color 2 (torso / slash 2)"] = "顏色 2(身體 / 斬擊 2)",
+        ["Color 3 (other / slash 3)"] = "顏色 3(其他 / 斬擊 3)",
+        ["Hit Effects"] = "命中特效",
+        ["Effect Distance In Front (studs)"] = "特效往前的距離 (格)",
+        ["Slashes"] = "斬擊",
+        ["Explosion"] = "爆炸",
+        ["Bubble"] = "泡泡",
+        ["Clone"] = "分身",
+        ["A fading ghost copy of the enemy where you hit it"] = "在打中的位置留下一個慢慢消失的敵人殘影",
+        ["Clone Material"] = "分身材質",
+        ["Remove Accessories From Clone"] = "分身去掉配件",
+        ["Test Hit Effects"] = "測試命中特效",
+        ["Enable Hit Feedback"] = "啟用命中回饋",
+        ["Play Hit Sound"] = "播放命中音效",
+        ["Headshot Sound"] = "爆頭音效",
+        ["Headshot Volume"] = "爆頭音量",
+        ["Headshot Pitch"] = "爆頭音調",
+        ["Body Hit Sound"] = "打身體音效",
+        ["Body Hit Volume"] = "打身體音量",
+        ["Body Hit Pitch"] = "打身體音調",
+        ["Mute Game Hit Sound"] = "靜音遊戲原本的命中音效",
+        ["Enable Hit Chams"] = "啟用命中上色",
+        ["Hit Chams Duration"] = "命中上色持續時間",
+        ["Hit Chams Material"] = "命中上色材質",
+        ["Enable Hit Flash"] = "啟用命中閃光",
+        ["Hit Flash Duration"] = "命中閃光持續時間",
+        ["Enable Hit Notification"] = "啟用命中通知",
+        ["Hit Notification Text"] = "命中通知文字",
+        ["ForceField"] = "力場",
+        ["Neon"] = "霓虹",
+        ["Glass"] = "玻璃",
+        ["SmoothPlastic"] = "光滑塑膠",
+        ["Plastic"] = "塑膠",
+        ["Metal"] = "金屬",
+        ["Foil"] = "鋁箔",
+        ["Ice"] = "冰",
+        ["Marble"] = "大理石",
+        ["Aim & Fire"] = "瞄準與開火",
+        ["Cooldowns"] = "冷卻時間",
+        ["Grenades"] = "手榴彈",
+        ["Remove Spread"] = "移除擴散",
+        ["Automatic Fire"] = "全自動開火",
+        ["Always Backstab"] = "永遠背刺",
+        ["Counter Stab"] = "反刺",
+        ["Range"] = "範圍",
+        ["Extend Melee Range"] = "加長近戰距離",
+        ["Fuse Override"] = "改引信時間",
+        ["Explode On"] = "爆炸時機",
+        ["Remove Fuse"] = "移除引信",
+        ["Impact"] = "碰到就爆",
+        ["Throw"] = "丟出就爆",
+        ["Reduce Recoil"] = "減少後座力",
+        ["Recoil Reduction (%)"] = "後座力減少 (%)",
+        ["Recoil"] = "後座力",
+        ["Aim Speed Override"] = "改開鏡速度",
+        ["Aim Speed (%)"] = "開鏡速度 (%)",
+        ["Fire Cooldown Override"] = "改射擊冷卻",
+        ["Aim Cooldown Override"] = "改開鏡冷卻",
+        ["Melee Cooldown Override"] = "改近戰冷卻",
+        ["Heavy Attack Cooldown Override"] = "改重擊冷卻",
+        ["Dash Cooldown Override"] = "改衝刺冷卻",
+        ["Cooldown"] = "冷卻",
+        ["Scale"] = "縮放",
+        ["Utilize Health Lead"] = "利用血量優勢",
+        ["Weapon Strategy"] = "武器策略",
+        ["Primary Enabled"] = "使用主武器",
+        ["Secondary Enabled"] = "使用副武器",
+        ["Melee Enabled"] = "使用近戰",
+        ["Weapons"] = "武器",
+        ["Hacker detector is not ready"] = "外掛偵測還沒準備好",
+        ["Ragebot Style"] = "暴力自瞄模式",
+        ["KH: Kicia's own ragebot. UE: the Unnamed Enhancements ragebot (void spam, backstab, gun and light attack). Picking UE hides the KH settings. Auto: plays as KH until the Hacker Detector flags an enemy, then switches this dropdown to FW UE and stays there. Careful: the LY hub's own ragebot in its Careful mode (its own targeting, teleport attack, evasion and reloads). Careful Settings, Weapon Strategy and Target HUD apply to it."] = "KH:Kicia 自己的暴力自瞄。UE:Unnamed Enhancements 的暴力自瞄(虛空閃現、背刺、用槍和輕攻擊),選 UE 會隱藏 KH 的設定。自動:先用 KH 模式,等外掛偵測抓到有人開外掛,就把這裡切到 FW UE 並一直保持。謹慎:LY Hub 自己的暴力自瞄的謹慎模式(自己選目標、傳送攻擊、閃避和換彈),「謹慎設定」、「武器策略」和「目標面板」對它有效。",
+        ["Round Start Delay"] = "回合開始延遲",
+        ["At the start of a round, hide in the void for a random 1-6 s first, then start attacking. Applies to every Ragebot Style."] = "每回合開始時,先躲在虛空隨機 1~6 秒再開始攻擊。所有暴力自瞄模式都有效。",
+        ["Target Order"] = "目標順序",
+        ["Hackers first: shoot players the Hacker Detector flagged before everyone else. Legit first: shoot unflagged players first; flagged hackers only once no legit target is left. Off: normal priority."] = "外掛優先:先打被外掛偵測標記的人。正常玩家優先:先打沒被標記的人,沒有正常目標了才打開外掛的。關閉:照一般的優先順序。",
+        ["Evade When Target Hacking"] = "對方開外掛時只閃避",
+        ["Hold fire completely while a flagged enemy hacker is alive AND your team's total HP (you included) is above the enemy team's total HP: no target is picked (only evasion runs), so the round can run out on HP. Attacks again once your team drops to their total or the hacker is gone."] = "當有被標記的外掛敵人還活著,而且我方總血量(包含你)比敵方高時,完全不開火:不選目標(只做閃避),讓回合靠血量優勢拖到時間結束。等我方血量掉到跟對方一樣或更低,或外掛玩家不在了,就會再開始攻擊。",
+        ["Clear Hacker Tags"] = "清除外掛標記",
+        ["Detect Knife"] = "偵測刀子",
+        ["Stability"] = "穩定度",
+        ["Shoot Frames"] = "開火幀數",
+        ["Custom Attack Height"] = "自訂攻擊高度",
+        ["Off: the fixed stand height (0.7 below the head hitbox of the target). On: the Attack Height below is used."] = "關閉:用固定站位高度(目標頭部判定下方 0.7)。開啟:用下面的「攻擊高度」。",
+        ["Attack Height"] = "攻擊高度",
+        ["How far above (+) or below (-) the head hitbox of the target you stand. A shield pointing down is 3.15 lower."] = "你站在目標頭部判定上方(+)或下方(-)多遠。盾牌朝下時要再低 3.15。",
+        ["Evade Between Shots"] = "射擊空檔閃避",
+        ["Slow weapons (shotgun, sniper, knife): evade in the gaps instead of standing on the target"] = "慢速武器(霰彈槍、狙擊槍、刀):在兩發之間的空檔閃避,不要一直站在目標身上",
+        ["Attack After Enemy"] = "等敵人出手後再攻擊",
+        ["Only shoot an enemy in the gap right after it fired or swung, or while its weapon cools down or reloads"] = "只在敵人剛開槍或揮完、或它的武器在冷卻/換彈時才打它",
+        ["Gap Window"] = "空檔時間",
+        ["How long after its shot or swing an enemy can still be shot (its weapon cooldown or reload also counts)"] = "敵人開槍或揮砍後多久之內還能打它(它的武器冷卻或換彈也算)",
+        ["Never Void"] = "永不進虛空",
+        ["Never hide in the void (UE style): no hide phase, and none while reloading, swapping, without a target or between knife stabs. You stay where you are."] = "永遠不躲進虛空(UE 模式):沒有躲藏階段,換彈、換武器、沒目標或兩刀之間都不躲,原地不動。",
+        ["Backstab Cooldown 0.8"] = "背刺冷卻 0.8 倍",
+        ["On: the time between two backstabs is HeavyAttackCooldown x 0.8. Off: UE's own x 0.75."] = "開啟:兩次背刺之間的時間 = 重擊冷卻 x 0.8。關閉:用 UE 原本的 x 0.75。",
+        ["Void Spam"] = "虛空閃現",
+        ["Hide in the void between attack bursts (UE void spam). Used by the gun and the light attack, not by the backstab."] = "每波攻擊之間躲進虛空(UE 的虛空閃現)。用槍和輕攻擊時有效,背刺不會用。",
+        ["Void Spam Attack"] = "閃現攻擊時間",
+        ["the amount of time attacking before hiding again (UE adds 0.1 s on top)"] = "每次攻擊多久後再躲回去(UE 會再多加 0.1 秒)",
+        ["Void Spam Hide"] = "閃現躲藏時間",
+        ["how long it stays in void for"] = "每次在虛空待多久",
+        ["Shoot Attempts"] = "開火嘗試次數",
+        ["how many times it will try to fire your weapon (UE: ragebot_shoot_attempts)"] = "會試著開火幾次(UE:ragebot_shoot_attempts)",
+        ["Knife Attack"] = "刀子攻擊方式",
+        ["Heavy Backstab = UE attack mode knife. Light Attack = UE attack mode melee (fast light attacks with the knife)."] = "重擊背刺 = UE 的刀子攻擊模式。輕攻擊 = UE 的近戰模式(用刀快速輕砍)。",
+        ["Weapon Priority"] = "武器優先順序",
+        ["On Empty"] = "沒子彈時",
+        ["Forward Depth"] = "前後閃避幅度",
+        ["Forward Frequency"] = "前後閃避頻率",
+        ["Upward Depth"] = "上下閃避幅度",
+        ["Upward Frequency"] = "上下閃避頻率",
+        ["Reposition Interval (s)"] = "換位間隔 (秒)",
+        ["Fallback Character Origin"] = "備用:以角色為中心",
+        ["Fallback Radius"] = "備用半徑",
+        ["Fallback Random Factor"] = "備用隨機程度",
+        ["Evasion Mode"] = "閃避方式",
+        ["Character Origin"] = "以角色為中心",
+        ["Base Radius"] = "基本半徑",
+        ["Random Factor"] = "隨機程度",
+        ["Offset"] = "偏移",
+        ["Target HUD"] = "目標面板",
+        ["Always Show"] = "一直顯示",
+        ["Keep the card up: without a ragebot target it shows the nearest enemy."] = "一直顯示卡片:暴力自瞄沒目標時顯示最近的敵人。",
+        ["Item Scale (%)"] = "物品縮放 (%)",
+        ["Offset X (%)"] = "X 偏移 (%)",
+        ["Offset Y (%)"] = "Y 偏移 (%)",
+        ["KH Settings"] = "KH 設定",
+        ["Careful Settings"] = "謹慎模式設定",
+        ["UE Settings"] = "UE 設定",
+        ["Evasion"] = "閃避",
+        ["FW UE Settings"] = "FW UE 設定",
+        ["FW Weapon Check"] = "FW 武器檢查",
+        ["Hide only while the weapon window is open. Slow weapons: the shot / swing cooldown must have at least 0.6 s left. Fast weapons (cooldown up to 0.3 s): the magazine must be nearly empty. Nobody may be reloading, and an enemy starting to reload sends you back to the void. No time limit on the wait."] = "只在武器空檔時躲。慢速武器:射擊/揮砍冷卻至少還剩 0.6 秒。快速武器(冷卻 0.3 秒以內):彈匣要快打完。不能有人在換彈,敵人一開始換彈就會把你送回虛空。等待沒有時間限制。",
+        ["Original"] = "原版",
+        ["Careful"] = "謹慎",
+        ["FWUE"] = "FW UE",
+        ["HackersFirst"] = "外掛優先",
+        ["LegitFirst"] = "正常玩家優先",
+        ["Heavy"] = "重擊",
+        ["Light"] = "輕攻擊",
+        ["Reload"] = "換彈",
+        ["Swap"] = "換武器",
+        ["SwapOrReload"] = "換武器或換彈",
+        ["Translocate"] = "瞬移",
+        ["ProjectileBreaker"] = "打掉投射物",
+        ["FW UE trash kh"] = "FW UE(打外掛用)",
+        ["Hackers first"] = "外掛優先",
+        ["Legit first"] = "正常玩家優先",
+        ["Heavy Backstab"] = "重擊背刺",
+        ["Light Attack"] = "輕攻擊",
+        ["Swap or Reload"] = "換武器或換彈",
+        ["Projectile Breaker"] = "打掉投射物",
+        ["Auto"] = "自動",
+        ["Ragebot"] = "暴力自瞄",
+        ["Flickbot"] = "自動甩槍",
+        ["Shoot"] = "開火",
+        ["Shot Delay (ms)"] = "開火延遲 (毫秒)",
+        ["Cooldown (ms)"] = "冷卻 (毫秒)",
+        ["Flick Duration (ms)"] = "甩槍時間 (毫秒)",
+        ["Curvature"] = "彎曲程度",
+        ["Humanness"] = "擬真程度",
+        ["Open Aimbot Targeting"] = "開啟自瞄的目標設定",
+        ["Combat"] = "戰鬥",
+        ["Aim assistance, fire control, weapon handling, feedback, and ragebot."] = "瞄準輔助、開火控制、武器操控、回饋和暴力自瞄。",
+        ["Aimbot"] = "自瞄",
+        ["Camera-based aim assistance and target locking."] = "轉動鏡頭的瞄準輔助和目標鎖定。",
+        ["Silent Aim"] = "靜默自瞄",
+        ["Redirect projectiles toward targets without moving the camera."] = "不轉動鏡頭,直接把子彈導向目標。",
+        ["Aggressive targeting, weapon priority, and evasive movement."] = "主動攻擊目標、武器優先順序和閃避移動。",
+        ["Fire Assist"] = "開火輔助",
+        ["Automatic firing and fast camera flicks."] = "自動開火和快速甩鏡頭。",
+        ["Weapon Handling"] = "武器操控",
+        ["Aim, firing, cooldown, melee, and grenade behavior."] = "瞄準、開火、冷卻、近戰和手榴彈的行為。",
+        ["Sound, visual, flash, and notification feedback."] = "音效、視覺、閃光和通知回饋。",
+        ["Season"] = "賽季",
+        ["Rank"] = "段位",
+        ["Leaderboard Rank (optional, e.g. 1)"] = "排行榜名次(可不填,例如 1)",
+        ["Apply To"] = "套用到",
+        ["Skin Catalog"] = "皮膚目錄",
+        ["Wrap Catalog"] = "包膜目錄",
+        ["Rank Charm Override"] = "段位吊飾替換",
+        ["Charm Catalog"] = "吊飾目錄",
+        ["Finisher Catalog"] = "終結特效目錄",
+        ["All Weapons"] = "所有武器",
+        ["Search Skins"] = "搜尋皮膚",
+        ["Search Wraps"] = "搜尋包膜",
+        ["Inverted Wrap"] = "反轉包膜",
+        ["Retry Loading Wrap Catalog"] = "重新載入包膜目錄",
+        ["Search Charms"] = "搜尋吊飾",
+        ["Retry Loading Charm Catalog"] = "重新載入吊飾目錄",
+        ["Search Finishers"] = "搜尋終結特效",
+        ["Cosmetic Runtime"] = "外觀功能",
+        ["Unlock All"] = "全部解鎖",
+        ["Community"] = "社群",
+        ["Enable Cosmetic Changes"] = "啟用外觀修改",
+        ["Cosmetic features are paused until cosmetic changes are enabled."] = "要先開啟「啟用外觀修改」,外觀功能才會運作。",
+        ["Use Custom Loadout"] = "使用自訂外觀",
+        ["Applies the choices from the Skins, Wraps, Charms, and Finishers catalogs."] = "套用在皮膚、包膜、吊飾和終結特效目錄裡選的東西。",
+        ["Reroll Random Cosmetics"] = "重新隨機外觀",
+        ["Unlock All Cosmetics"] = "解鎖所有外觀",
+        ["Cosmetic Types to Unlock"] = "要解鎖的外觀類型",
+        ["Cosmetic Rarities to Unlock"] = "要解鎖的稀有度",
+        ["Share Skins"] = "分享皮膚",
+        ["Show Active Cosmetics"] = "顯示目前外觀",
+        ["Library"] = "收藏庫",
+        ["Cosmetic Preset Name"] = "外觀預設名稱",
+        ["Create Cosmetic Preset"] = "建立外觀預設",
+        ["No Cosmetic Presets yet. Enter a name to create one."] = "還沒有外觀預設。輸入名稱來建立一個。",
+        ["Cosmetic Preset Library"] = "外觀預設庫",
+        ["Load Selected Cosmetic Preset"] = "載入選中的外觀預設",
+        ["Save to Selected Cosmetic Preset"] = "儲存到選中的外觀預設",
+        ["Import (paste cosmetics)"] = "匯入(貼上外觀)",
+        ["Import Cosmetics"] = "匯入外觀",
+        ["Auto Load Cosmetic Preset"] = "自動載入外觀預設",
+        ["Auto Save Cosmetic Preset"] = "自動儲存外觀預設",
+        ["Delete Selected Cosmetic Preset"] = "刪除選中的外觀預設",
+        ["Copied your current cosmetics to the clipboard"] = "已把目前的外觀複製到剪貼簿",
+        ["Cosmetic Preset to Auto Load"] = "要自動載入的外觀預設",
+        ["Cosmetic Preset to Auto Save"] = "要自動儲存的外觀預設",
+        ["Cosmetics"] = "外觀",
+        ["Manage cosmetic runtime, catalogs, and cosmetic presets."] = "管理外觀功能、目錄和外觀預設。",
+        ["Presets"] = "預設",
+        ["Create, load, automate, and delete whole cosmetic loadouts."] = "建立、載入、自動套用和刪除整套外觀。",
+        ["Overview"] = "總覽",
+        ["Enable cosmetic features, unlock cosmetics, reroll, and share your active look."] = "開啟外觀功能、解鎖外觀、重新隨機和分享你目前的造型。",
+        ["Skins"] = "皮膚",
+        ["Browse and apply weapon skin variants."] = "瀏覽並套用武器皮膚。",
+        ["Wraps"] = "包膜",
+        ["Browse weapon wraps and control inverted patterns."] = "瀏覽武器包膜,並設定是否反轉圖案。",
+        ["Charms"] = "吊飾",
+        ["Browse weapon charms and optionally override rank charms."] = "瀏覽武器吊飾,也可以替換段位吊飾。",
+        ["Finishers"] = "終結特效",
+        ["Browse and apply weapon finishers."] = "瀏覽並套用武器終結特效。",
+        ["Cosmetic changes are disabled. Enable them on Overview."] = "外觀修改沒開。請到「總覽」開啟。",
+        ["Custom loadout is ready."] = "自訂外觀已準備好。",
+        ["Custom loadout is disabled. Enable it on Overview."] = "自訂外觀沒開。請到「總覽」開啟。",
+        ["Wrap previews could not be loaded. Retry when assets are available."] = "包膜預覽載入失敗。等資源可用時再重試。",
+        ["Charm previews could not be loaded. Retry when assets are available."] = "吊飾預覽載入失敗。等資源可用時再重試。",
+        ["Skin"] = "皮膚",
+        ["Wrap"] = "包膜",
+        ["Charm"] = "吊飾",
+        ["Finisher"] = "終結特效",
+        ["Assets"] = "資源",
+        ["Misc"] = "其他",
+        ["Loading catalog"] = "正在載入目錄",
+        ["The previews are being prepared."] = "正在準備預覽。",
+        ["The catalog could not be loaded."] = "目錄載入失敗。",
+        ["No items available"] = "沒有可用的物品",
+        ["This catalog does not have any items yet."] = "這個目錄還沒有任何物品。",
+        ["No matches"] = "沒有符合的",
+        ["Nothing matches the search."] = "沒有符合搜尋的項目。",
+        ["The skin, wrap, charm and finisher picker is in the LY and Classic menus."] = "皮膚、包膜、吊飾和終結特效的選擇器在 LY 和 Classic 選單裡。",
+        ["Animation Player"] = "動作播放器",
+        ["Enable Animation Player"] = "啟用動作播放器",
+        ["Custom Animation ID"] = "自訂動作 ID",
+        ["Start"] = "開始",
+        ["End"] = "結束",
+        ["Character Appearance"] = "角色外觀",
+        ["Enable Character Chams"] = "啟用角色上色",
+        ["Character Chams Material"] = "角色上色材質",
+        ["Strip Character Chams Textures"] = "角色上色時去掉貼圖",
+        ["Device Spoof"] = "裝置偽裝",
+        ["Enable Device Spoof"] = "啟用裝置偽裝",
+        ["Presented Platform"] = "要顯示的平台",
+        ["Touch"] = "手機/觸控",
+        ["Gamepad"] = "手把",
+        ["Keyboard"] = "鍵盤",
+        ["Multiplier"] = "倍率",
+        ["Depth"] = "深度",
+        ["Infinite Double Jumps"] = "無限二段跳",
+        ["Force"] = "力道",
+        ["Upward Velocity"] = "向上速度",
+        ["Behind Offset"] = "背後距離",
+        ["Under Feet"] = "腳下",
+        ["Camera Look"] = "鏡頭方向",
+        ["Walk Speed"] = "移動速度",
+        ["Sliding"] = "滑行",
+        ["Noclip"] = "穿牆",
+        ["Underground"] = "地底",
+        ["Auto Strafe"] = "自動側移",
+        ["Jump Power"] = "跳躍力",
+        ["Flight"] = "飛行",
+        ["Long Jump"] = "跳遠",
+        ["Behind"] = "背後",
+        ["Recorder"] = "錄製器",
+        ["Markers"] = "標記",
+        ["Record / Replay"] = "錄製 / 重播",
+        ["Playback Alignment"] = "重播對齊",
+        ["Save Recording"] = "儲存錄製",
+        ["Recording Library"] = "錄製庫",
+        ["Enable Movement Recorder"] = "啟用移動錄製器",
+        ["Hide Recorder UI"] = "隱藏錄製器介面",
+        ["Hide Recorder Notifications"] = "隱藏錄製器通知",
+        ["Open Distance"] = "開啟距離",
+        ["Render Distance"] = "顯示距離",
+        ["Look Align Speed"] = "視角對齊速度",
+        ["How fast the camera turns to the recording's starting look angle"] = "鏡頭轉到錄製起始視角的速度",
+        ["Look Smoothness"] = "視角平滑度",
+        ["How smoothened camera look is"] = "鏡頭轉動有多平滑",
+        ["Align Snap Distance"] = "對齊吸附距離",
+        ["Once this close to the start, position is considered aligned"] = "離起點這麼近就算已經對齊",
+        ["Recording Name"] = "錄製名稱",
+        ["my recording"] = "我的錄製",
+        ["Save or Overwrite Recording"] = "儲存或覆蓋錄製",
+        ["Recording"] = "錄製",
+        ["Replay Selected Recording"] = "重播選中的錄製",
+        ["No saved recordings yet. Record a route, then save it to build your library."] = "還沒有儲存的錄製。先錄一段路線再儲存,就會出現在這裡。",
+        ["Delete Recording"] = "刪除錄製",
+        ["Record"] = "錄製",
+        ["Replay"] = "重播",
+        ["HideUI"] = "隱藏介面",
+        ["Value"] = "數值",
+        ["Display Name"] = "暱稱",
+        ["Avatar"] = "頭像",
+        ["User ID"] = "使用者 ID",
+        ["Winstreak"] = "連勝",
+        ["Level"] = "等級",
+        ["Casual Wins"] = "休閒勝場",
+        ["Ranked Wins"] = "排位勝場",
+        ["Casual Win %"] = "休閒勝率 %",
+        ["Win %"] = "勝率 %",
+        ["Ranked Win %"] = "排位勝率 %",
+        ["Ranked ELO"] = "排位 ELO",
+        ["Leaderboard Rank"] = "排行榜名次",
+        ["Favorite Map"] = "最愛地圖",
+        ["Nametag Status"] = "名牌狀態",
+        ["Status"] = "狀態",
+        ["Influencer"] = "網紅",
+        ["Roblox Employee"] = "Roblox 員工",
+        ["Nosniy Games Team"] = "Nosniy Games 團隊",
+        ["Ping"] = "延遲",
+        ["Ping Value"] = "延遲數值",
+        ["Keys"] = "鑰匙",
+        ["Event Currency"] = "活動貨幣",
+        ["Low"] = "低",
+        ["Medium"] = "中",
+        ["High"] = "高",
+        ["Local Player"] = "自己",
+        ["Other Player"] = "其他玩家",
+        ["Player"] = "玩家",
+        ["Movement, character appearance, and identity."] = "移動、角色外觀和身分。",
+        ["Movement"] = "移動",
+        ["Ground and air movement."] = "地面和空中移動。",
+        ["Movement Recorder"] = "移動錄製器",
+        ["Record, replay, and manage movement routes."] = "錄製、重播和管理移動路線。",
+        ["Character"] = "角色",
+        ["Animations and character appearance."] = "動作和角色外觀。",
+        ["Identity Spoofing"] = "身分偽裝",
+        ["Presented device and player identity."] = "對外顯示的裝置和玩家身分。",
+        ["Camera FOV"] = "鏡頭 FOV",
+        ["Enable Camera FOV"] = "啟用鏡頭 FOV",
+        ["Field of View"] = "視野角度",
+        ["Gameplay Overlays"] = "遊戲畫面效果",
+        ["Hide Flashbang Effect"] = "隱藏閃光彈效果",
+        ["Hide Burn Effect"] = "隱藏燃燒效果",
+        ["Hide ADS Vignette"] = "隱藏開鏡暗角",
+        ["Hide Scope Overlay"] = "隱藏狙擊鏡遮罩",
+        ["Hide Scope Reticle"] = "隱藏狙擊鏡準心",
+        ["Hide Hitmarker"] = "隱藏命中標記",
+        ["Stretched Resolution"] = "拉伸解析度",
+        ["Enable Stretched Resolution"] = "啟用拉伸解析度",
+        ["X Scale"] = "X 縮放",
+        ["Y Scale"] = "Y 縮放",
+        ["Third Person"] = "第三人稱",
+        ["Enable Third Person"] = "啟用第三人稱",
+        ["Ray Check"] = "碰撞檢查",
+        ["Show Replica"] = "顯示自己的模型",
+        ["X Offset"] = "X 偏移",
+        ["Y Offset"] = "Y 偏移",
+        ["Z Offset"] = "Z 偏移",
+        ["Manage Images"] = "管理圖片",
+        ["Add or remove custom images."] = "新增或移除自訂圖片。",
+        ["Add an Image"] = "新增圖片",
+        ["Enter a name and image source."] = "輸入名稱和圖片來源。",
+        ["Add Image"] = "新增圖片",
+        ["Image Source"] = "圖片來源",
+        ["Remove an Image"] = "移除圖片",
+        ["Select an image to remove."] = "選擇要移除的圖片。",
+        ["Remove Image"] = "移除圖片",
+        ["Remove selected image?"] = "要移除選中的圖片嗎?",
+        ["The selected image will be permanently removed."] = "選中的圖片會被永久移除。",
+        ["Image"] = "圖片",
+        ["Crosshair Image Size"] = "準星圖片大小",
+        ["Crosshair Image Transparency"] = "準星圖片透明度",
+        ["Crosshair Image Selection"] = "準星圖片選擇",
+        ["Top Line"] = "上線",
+        ["Bottom Line"] = "下線",
+        ["Left Line"] = "左線",
+        ["Right Line"] = "右線",
+        ["Line Length"] = "線長",
+        ["Line Thickness"] = "線粗",
+        ["Line Gap"] = "線的間距",
+        ["Crosshair Outline"] = "準星外框",
+        ["Crosshair Outline Thickness"] = "準星外框粗細",
+        ["Enable Crosshair"] = "啟用自訂準星",
+        ["Crosshair Style"] = "準星樣式",
+        ["Lines"] = "線條",
+        ["Drags the crosshair toward the aimbot / silent aim target"] = "把準星拉向自瞄 / 靜默自瞄的目標",
+        ["Follow Target Mode"] = "跟隨目標方式",
+        ["Crosshair + Text"] = "準星 + 文字",
+        ["Rotate Crosshair"] = "旋轉準星",
+        ["Crosshair Rotation Speed"] = "準星旋轉速度",
+        ["Degrees per second"] = "每秒幾度",
+        ["Crosshair Spread"] = "準星擴張",
+        ["Pulses the gap outward by the range below"] = "讓間距照下面的範圍一張一縮",
+        ["Crosshair Spread Range"] = "準星擴張範圍",
+        ["Spread Speed"] = "擴張速度",
+        ["Rotation"] = "旋轉角度",
+        ["Static tilt of the whole crosshair"] = "整個準星固定傾斜的角度",
+        ["Crosshair Text Content"] = "準星文字內容",
+        ["Crosshair Text Font"] = "準星文字字型",
+        ["Crosshair Text Size"] = "準星文字大小",
+        ["Crosshair Text Offset"] = "準星文字偏移",
+        ["Pixels below the crosshair"] = "在準星下方幾個像素",
+        ["Crosshair Text Color"] = "準星文字顏色",
+        ["Crosshair Text Outline"] = "準星文字外框",
+        ["Crosshair Text Outline Thickness"] = "準星文字外框粗細",
+        ["Enable Crosshair Text"] = "啟用準星文字",
+        ["A custom label beneath the crosshair"] = "準星下方的自訂文字",
+        ["Motion & Effects"] = "動態與特效",
+        ["Animate Crosshair"] = "準星動畫",
+        ["Animate Crosshair Text"] = "準星文字動畫",
+        ["Content"] = "內容",
+        ["Left"] = "左",
+        ["Right"] = "右",
+        ["Length"] = "長度",
+        ["Gap"] = "間距",
+        ["Shimmer"] = "閃爍",
+        ["Perimeter"] = "外圍",
+        ["Activation & Filtering"] = "啟動與篩選",
+        ["Enable Sound ESP"] = "啟用聲音透視",
+        ["Sound Types"] = "聲音類型",
+        ["Minimum Volume"] = "最小音量",
+        ["Origin"] = "來源位置",
+        ["All"] = "全部",
+        ["Enemies"] = "敵人",
+        ["Team"] = "隊友",
+        ["Self"] = "自己",
+        ["Footsteps"] = "腳步聲",
+        ["Other"] = "其他",
+        ["Enable Bullet Tracers"] = "啟用彈道線",
+        ["Tracer Style"] = "彈道線樣式",
+        ["Tracer Width"] = "彈道線寬度",
+        ["Texture Length"] = "貼圖長度",
+        ["Texture Speed"] = "貼圖速度",
+        ["Tracer Lifetime"] = "彈道線存在時間",
+        ["Fade Time"] = "淡出時間",
+        ["Emission"] = "發光",
+        ["Expand Tracers"] = "彈道線擴散",
+        ["Expand Speed"] = "擴散速度",
+        ["Expand Damper"] = "擴散緩衝",
+        ["Width"] = "寬度",
+        ["Lifetime"] = "存在時間",
+        ["Expand"] = "擴散",
+        ["Source"] = "來源",
+        ["Hide Shoot Animation"] = "隱藏開火動作",
+        ["Hide Sprint Animation"] = "隱藏奔跑動作",
+        ["Hide Equip Animation"] = "隱藏拿出武器動作",
+        ["Hide Reload Animation"] = "隱藏換彈動作",
+        ["Motion"] = "晃動",
+        ["Remove Weapon Motion"] = "移除武器晃動",
+        ["Remove Camera Shake"] = "移除鏡頭震動",
+        ["Remove Camera Sway"] = "移除鏡頭搖晃",
+        ["Enable Viewmodel Position"] = "啟用手臂模型位置調整",
+        ["X"] = "X",
+        ["Y"] = "Y",
+        ["Z"] = "Z",
+        ["Pitch"] = "俯仰",
+        ["Yaw"] = "左右轉",
+        ["Roll"] = "翻滾",
+        ["Hide Muzzle Flash"] = "隱藏槍口火光",
+        ["Hide Game Tracers"] = "隱藏遊戲原本的彈道線",
+        ["Wireframe"] = "線框",
+        ["Viewmodel Position"] = "手臂模型位置",
+        ["Motion & Animation"] = "晃動與動作",
+        ["Bullet Tracers"] = "彈道線",
+        ["Advanced Tracers"] = "進階彈道線",
+        ["Suppressions"] = "隱藏效果",
+        ["Arms"] = "手臂",
+        ["Item"] = "手持物品",
+        ["Held Item"] = "手持物品",
+        ["Removables"] = "可移除物件",
+        ["Visuals"] = "視覺",
+        ["Player information, crosshair, weapon, camera, and sound visuals."] = "玩家資訊、準星、武器、鏡頭和聲音的視覺效果。",
+        ["Player overlays, team-specific styling, and a synchronized preview."] = "玩家標示、敵我分開的樣式和同步預覽。",
+        ["Crosshair lines, images, text, motion, and target-follow effects."] = "準星的線條、圖片、文字、動態和跟隨目標效果。",
+        ["Weapon Visuals"] = "武器視覺",
+        ["Viewmodel position, materials, motion, and projectile effects."] = "手臂模型位置、材質、晃動和子彈效果。",
+        ["Camera & Screen"] = "鏡頭與畫面",
+        ["Third person, camera field of view, overlays, and screen scaling."] = "第三人稱、鏡頭視野、畫面效果和畫面拉伸。",
+        ["Sound ESP"] = "聲音透視",
+        ["Visualize footsteps and other sounds by source and loudness."] = "依來源和音量把腳步聲等聲音標在畫面上。",
+        ["Atmosphere"] = "大氣",
+        ["Atmosphere color."] = "大氣顏色。",
+        ["Atmosphere decay color."] = "大氣衰減顏色。",
+        ["Density"] = "濃度",
+        ["Glare"] = "眩光",
+        ["Haze"] = "霧氣",
+        ["Lighting Override"] = "光照覆蓋",
+        ["Time & Exposure"] = "時間與曝光",
+        ["Shadows & Quality"] = "陰影與畫質",
+        ["Ambient Colors"] = "環境光顏色",
+        ["Fog & Atmosphere"] = "霧與大氣",
+        ["Enable Lighting Override"] = "啟用光照覆蓋",
+        ["Clock Time"] = "時間",
+        ["Time"] = "時間",
+        ["Geographic Latitude"] = "地理緯度",
+        ["Latitude"] = "緯度",
+        ["Brightness"] = "亮度",
+        ["Exposure Compensation"] = "曝光補償",
+        ["Exposure"] = "曝光",
+        ["Disable Global Shadows"] = "關閉全域陰影",
+        ["Shadow Softness"] = "陰影柔和度",
+        ["Softness"] = "柔和度",
+        ["Lighting Style"] = "光照風格",
+        ["Shadow Color"] = "陰影顏色",
+        ["Prioritize Lighting Quality"] = "優先光照品質",
+        ["Indoor ambient color."] = "室內環境光顏色。",
+        ["Outdoor ambient color."] = "室外環境光顏色。",
+        ["Color Shift"] = "色偏",
+        ["Top color shift."] = "上方色偏。",
+        ["Bottom color shift."] = "下方色偏。",
+        ["Environment Diffuse Scale"] = "環境漫射強度",
+        ["Diffuse Scale"] = "漫射強度",
+        ["Environment Specular Scale"] = "環境反光強度",
+        ["Specular Scale"] = "反光強度",
+        ["Fog"] = "霧",
+        ["Fog Start"] = "霧開始距離",
+        ["Fog End"] = "霧結束距離",
+        ["Realistic"] = "寫實",
+        ["Soft"] = "柔和",
+        ["Ambient"] = "環境光",
+        ["Indoor"] = "室內",
+        ["Outdoor"] = "室外",
+        ["Ambience"] = "環境音",
+        ["Decay"] = "衰減",
+        ["Bloom"] = "泛光",
+        ["Intensity"] = "強度",
+        ["Size"] = "大小",
+        ["Threshold"] = "門檻",
+        ["Color Correction"] = "色彩校正",
+        ["Saturation"] = "飽和度",
+        ["Contrast"] = "對比",
+        ["Color Grading"] = "調色",
+        ["Preset"] = "預設",
+        ["Default"] = "預設",
+        ["Retro"] = "復古",
+        ["Depth of Field"] = "景深",
+        ["Far Intensity"] = "遠景模糊強度",
+        ["Focus Distance"] = "對焦距離",
+        ["In Focus Radius"] = "清晰範圍",
+        ["Near Intensity"] = "近景模糊強度",
+        ["Motion Blur"] = "動態模糊",
+        ["Sensitivity"] = "靈敏度",
+        ["Sun Rays"] = "陽光光束",
+        ["Spread"] = "擴散",
+        ["Tone & Color"] = "色調與顏色",
+        ["Focus & Motion"] = "對焦與動態",
+        ["Light Effects"] = "光線效果",
+        ["Enable Ambient Sound"] = "啟用環境音",
+        ["Custom Sound (ID or URL)"] = "自訂音效(ID 或網址)",
+        ["Volume"] = "音量",
+        ["Enable Lightning"] = "啟用閃電",
+        ["Strike lightning during rain and blizzards."] = "下雨和暴風雪時打閃電。",
+        ["Colour or gradient of the lightning bolts."] = "閃電的顏色或漸層。",
+        ["Bolt"] = "閃電",
+        ["Interval"] = "間隔",
+        ["Average seconds between strikes."] = "平均幾秒打一次閃電。",
+        ["Farthest a strike can land from the camera."] = "閃電最遠可以打在離鏡頭多遠的地方。",
+        ["Height"] = "高度",
+        ["Length of each bolt from cloud to ground."] = "每道閃電從雲到地面的長度。",
+        ["Core thickness of the bolts."] = "閃電主幹的粗細。",
+        ["Jaggedness"] = "鋸齒程度",
+        ["How jagged and erratic the bolts look."] = "閃電看起來有多曲折、多亂。",
+        ["Branches"] = "分支",
+        ["Maximum forks that split off each bolt."] = "每道閃電最多分出幾條岔。",
+        ["Brightness of the light flash at the impact."] = "落雷處閃光的亮度。",
+        ["Sparks"] = "火花",
+        ["Sparks that crackle off the bolt as it strikes."] = "打雷時從閃電迸出的火花。",
+        ["Colour or gradient of the sparks."] = "火花的顏色或漸層。",
+        ["Count"] = "數量",
+        ["How many sparks each strike throws off."] = "每次打雷噴出幾個火花。",
+        ["Thickness of the sparks."] = "火花的粗細。",
+        ["How far sparks fly from the bolt."] = "火花從閃電飛多遠。",
+        ["How fast sparks shoot out and fade."] = "火花噴出和消失的速度。",
+        ["How jagged the sparks look."] = "火花看起來有多曲折。",
+        ["Burst of arcs that erupts where the bolt lands."] = "落雷處爆出的一圈電弧。",
+        ["Colour or gradient of the explosion."] = "爆炸的顏色或漸層。",
+        ["Size of the impact burst."] = "落雷爆炸的大小。",
+        ["Bolts"] = "電弧數",
+        ["How many arcs radiate from the impact."] = "落雷處向外放出幾道電弧。",
+        ["Play a thunder crack with each strike, delayed and quietened by distance."] = "每次打雷都播雷聲,越遠越晚、越小聲。",
+        ["Loudness of a strike landing right beside you."] = "閃電打在你旁邊時的音量。",
+        ["Delay"] = "延遲",
+        ["Lag the crack by the strike's distance, like real thunder. Off plays it instantly."] = "依閃電距離延遲雷聲,跟真的打雷一樣。關閉就立刻播放。",
+        ["Sound ID"] = "音效 ID",
+        ["Roblox sound id or local file path for the crack. Leave empty for the default thunder."] = "雷聲用的 Roblox 音效 ID 或本機檔案路徑。留空就用預設雷聲。",
+        ["Up Face"] = "上面",
+        ["Down Face"] = "下面",
+        ["Front Face"] = "前面",
+        ["Back Face"] = "後面",
+        ["Left Face"] = "左面",
+        ["Right Face"] = "右面",
+        ["Manage Skyboxes"] = "管理天空盒",
+        ["Add or remove custom skyboxes."] = "新增或移除自訂天空盒。",
+        ["Add a Skybox"] = "新增天空盒",
+        ["Enter a name and six face textures."] = "輸入名稱和六個面的貼圖。",
+        ["Add Skybox"] = "新增天空盒",
+        ["Id / Url"] = "ID / 網址",
+        ["Remove a Skybox"] = "移除天空盒",
+        ["Select a skybox to remove."] = "選擇要移除的天空盒。",
+        ["Remove Skybox"] = "移除天空盒",
+        ["Remove selected skybox?"] = "要移除選中的天空盒嗎?",
+        ["The selected skybox will be permanently removed."] = "選中的天空盒會被永久移除。",
+        ["Skybox"] = "天空盒",
+        ["Enable Skybox"] = "啟用天空盒",
+        ["Enable Weather"] = "啟用天氣",
+        ["Rate"] = "密度",
+        ["Wind Strength"] = "風力",
+        ["Wind Angle"] = "風向",
+        ["Wind"] = "風",
+        ["Strength"] = "強度",
+        ["Angle"] = "角度",
+        ["Snow"] = "下雪",
+        ["Rain"] = "下雨",
+        ["Blizzard"] = "暴風雪",
+        ["Ambient Sound"] = "環境音",
+        ["Weather"] = "天氣",
+        ["Lightning"] = "閃電",
+        ["World"] = "世界",
+        ["Lighting, post-processing, sky, and ambient sound."] = "光照、後製特效、天空和環境音。",
+        ["Lighting"] = "光照",
+        ["Override time, exposure, shadows, ambient light, fog, and atmosphere."] = "覆蓋時間、曝光、陰影、環境光、霧和大氣。",
+        ["Post Processing"] = "後製特效",
+        ["Tune tone, focus, motion, and light effects."] = "調整色調、對焦、動態和光線效果。",
+        ["Sky & Weather"] = "天空與天氣",
+        ["Choose a skybox, ambient sound, weather, and lightning."] = "選擇天空盒、環境音、天氣和閃電。",
+        ["Click again to confirm"] = "再點一次確認",
+        ["Click again to confirm."] = "再點一次確認。",
+        ["Manage"] = "管理",
+        ["Welcome"] = "歡迎",
+        ["Dashboard"] = "主頁",
+        ["Open"] = "開啟",
+        ["Keybinds"] = "快捷鍵",
+        ["Clear search"] = "清除搜尋",
+        ["No Bind"] = "未設定",
+        ["Min"] = "最小",
+        ["Max"] = "最大",
+        ["Themes"] = "主題",
+        ["Acrylic"] = "毛玻璃效果",
+        ["New Theme Name"] = "新主題名稱",
+        ["Create New Theme"] = "建立新主題",
+        ["Themes List"] = "主題列表",
+        ["Apply Theme"] = "套用主題",
+        ["Overwrite Theme"] = "覆蓋主題",
+        ["Autoload Theme"] = "設為自動載入主題",
+        ["Reset Autoload"] = "取消自動載入",
+        ["Delete Theme"] = "刪除主題",
+        ["Interface"] = "介面",
+        ["Backgrounds"] = "背景",
+        ["Dark"] = "深色",
+        ["Groupbox"] = "群組框",
+        ["Foregrounds"] = "前景",
+        ["Active"] = "啟用中",
+        ["Foreground Hovers"] = "前景(滑過時)",
+        ["Miscellaneous"] = "其他",
+        ["Shadows"] = "陰影",
+        ["Shadow"] = "陰影",
+        ["Accents"] = "主題色",
+        ["Accent Brighter"] = "主題色(亮)",
+        ["Brighter"] = "較亮",
+        ["Theme with the provided name exists already. Overwrite it with Overwrite Theme below."] = "已經有同名主題了。要覆蓋請用下面的「覆蓋主題」。",
+        ["Unable to save the theme."] = "無法儲存主題。",
+        ["That theme could not be loaded."] = "無法載入這個主題。",
+        ["Theme must be selected!"] = "請先選一個主題!",
+        ["Only a custom theme can be overwritten!"] = "只能覆蓋自訂主題!",
+        ["Unable to overwrite the theme."] = "無法覆蓋主題。",
+        ["Only a custom theme can be deleted!"] = "只能刪除自訂主題!",
+        ["Current Autoload Theme: None"] = "目前自動載入的主題:無",
+        ["Watermark"] = "浮水印",
+        ["Order"] = "順序",
+        ["Dropdown"] = "下拉選單",
+        ["Button"] = "按鈕",
+        ["Slider"] = "滑桿",
+        ["Label"] = "標籤",
+        ["List"] = "列表",
+        ["Team HP : "] = "我方總血量:",
+        ["  |  Enemy team Hp : "] = "  |  敵方總血量:",
+        ["You are winning by "] = "你領先",
+        ["You are losing by "] = "你落後",
+        ["You are "] = "目前",
+        ["tied"] = "平手",
+        ["dead"] = "陣亡",
+        ["weapon: "] = "武器:",
+        ["status: "] = "狀態:",
+        ["RAGE"] = "暴力",
+        ["LEGIT"] = "正常",
+        ["Target : "] = "目標:",
+        ["none"] = "無",
+        ["Starting"] = "即將開始",
+        ["In round"] = "回合中",
+        ["Round over"] = "回合結束",
+        ["no time limit"] = "沒有時間限制",
+        ["  left"] = "  剩餘",
+        ["No weapon motion"] = "移除武器晃動",
+        ["Removes gun bob, tilt, landing and recoil motion from your viewmodel"] = "移除手臂模型的上下晃動、傾斜、落地晃動和後座晃動",
+        ["No shoot animation"] = "不播開火動作",
+        ["Your gun doesn't play its firing animation"] = "你的槍不播放開火動作",
+        ["No sprint animation"] = "不播奔跑動作",
+        ["Your viewmodel doesn't play the sprint animation"] = "手臂模型不播放奔跑動作",
+        ["No equip animation"] = "不播拿出武器動作",
+        ["Skip the draw animation when you switch weapons"] = "換武器時跳過拿出動作",
+        ["No reload animation"] = "不播換彈動作",
+        ["Your viewmodel doesn't play the reload animation"] = "手臂模型不播放換彈動作",
+        ["No idle animation"] = "不播待機動作",
+        ["Your viewmodel stays still while idle"] = "待機時手臂模型保持不動",
+        ["No crouch animation"] = "不播蹲下動作",
+        ["Your viewmodel doesn't play the crouch animation"] = "手臂模型不播放蹲下動作",
+        ["No aim animation"] = "不播開鏡動作",
+        ["Your viewmodel doesn't play the aim-down-sights animation"] = "手臂模型不播放開鏡動作",
+        ["Viewmodel offset"] = "手臂模型偏移",
+        ["Move your first-person arms and gun"] = "移動第一人稱的手臂和槍",
+        ["No muzzle flash"] = "移除槍口火光",
+        ["Hide the flash on your own gun"] = "隱藏自己槍的槍口火光",
+        ["Hide all viewmodel effects"] = "隱藏所有手臂模型特效",
+        ["Also hide effects that aren't named muzzle / flash"] = "連名字不叫 muzzle / flash 的特效也一起隱藏",
+        ["Change the look of your first-person arms / hands"] = "改變第一人稱手臂 / 手的外觀",
+        ["Change the look of your first-person gun"] = "改變第一人稱槍的外觀",
+        ["Draw your first-person arms as lines along their mesh edges"] = "把第一人稱手臂畫成沿著模型邊緣的線條",
+        ["Draw your first-person gun as lines along its mesh edges"] = "把第一人稱的槍畫成沿著模型邊緣的線條",
+        ["Viewmodel"] = "手臂模型",
+        ["Sprint"] = "奔跑",
+        ["Equip"] = "拿出武器",
+        ["Idle"] = "待機",
+        ["Crouch"] = "蹲下",
+        ["Aim"] = "開鏡",
+        ["Arm"] = "手臂",
+        ["Gun"] = "槍",
+        ["Beam"] = "光束",
+        ["Trail"] = "拖尾",
+        ["Fire"] = "火焰",
+        ["Smoke"] = "煙霧",
+        ["Sparkles"] = "閃光粒子",
+        ["Some fonts may be unavailable"] = "部分字型可能無法使用",
+        ["Some saved settings could not be restored and were reset to defaults"] = "部分已存的設定無法還原,已重設為預設值",
+        ["Failed to auto-load the selected config"] = "自動載入選中的設定檔失敗",
+        ["Your selected config was saved by a newer version - update or pick another config"] = "你選的設定檔是新版存的,請更新腳本或改選其他設定檔",
+        ["Premium Build"] = "高級版",
+        ["Camera"] = "鏡頭",
+        ["Hook"] = "攔截",
+        ["Unselected"] = "未選中",
+        ["Ready"] = "就緒",
+        ["NoMatches"] = "沒有符合的",
+        ["Empty"] = "空的",
+        ["Loading"] = "載入中",
+        ["Unavailable"] = "無法使用",
+        ["Loading cosmetic preset"] = "正在載入外觀預設",
+        ["Saving cosmetic preset"] = "正在儲存外觀預設",
+        ["Exporting cosmetics"] = "正在匯出外觀",
+        ["Importing cosmetics"] = "正在匯入外觀",
+        ["Deleting cosmetic preset"] = "正在刪除外觀預設",
+        ["Creating cosmetic preset"] = "正在建立外觀預設",
+        ["Creating config"] = "正在建立設定檔",
+        ["Loading config"] = "正在載入設定檔",
+        ["Saving config"] = "正在儲存設定檔",
+        ["Exporting config"] = "正在匯出設定檔",
+        ["Importing config"] = "正在匯入設定檔",
+        ["Deleting config"] = "正在刪除設定檔",
+        ["Auto-saving config"] = "正在自動儲存設定檔",
+        ["Username"] = "使用者名稱",
+        ["Equipment"] = "裝備",
+        ["Lobby"] = "大廳",
+        ["Matchmaking"] = "配對",
+        ["Velocity"] = "速度",
+        ["Clock"] = "時鐘",
+        ["Mode3D"] = "3D 模式",
+        ["PosX"] = "X 位置",
+        ["PosY"] = "Y 位置",
+        ["FWWeaponCheck"] = "FW 武器檢查",
+        ["Duplicate"] = "複製",
+        ["Clear"] = "清除",
+        ["Add"] = "新增",
+        ["Remove"] = "移除",
+        ["Delete"] = "刪除",
+        ["Save"] = "儲存",
+        ["Load"] = "載入",
+        ["Cancel"] = "取消",
+        ["Close"] = "關閉",
+        ["Back"] = "返回",
+        ["Apply"] = "套用",
+        ["Reset"] = "重設",
+        ["Refresh"] = "重新整理",
+        ["Search"] = "搜尋",
+        ["Other Players"] = "其他玩家",
+        ["Rarity"] = "稀有度",
+        ["Common"] = "普通",
+        ["Uncommon"] = "少見",
+        ["Rare"] = "稀有",
+        ["Epic"] = "史詩",
+        ["Legendary"] = "傳說",
+        ["Mythic"] = "神話",
+        ["Unobtainable"] = "無法取得",
+        ["HitboxHead"] = "頭部",
+        ["HitboxBody"] = "身體",
+        ["HitboxHeadSmall"] = "頭部(小判定)",
+        ["HitboxBodySmall"] = "身體(小判定)",
+        ["Small"] = "小",
+        ["English"] = "English",
+        ["繁體中文"] = "繁體中文",
+        ["Language / 語言"] = "Language / 語言",
+        ["Menu language. Dropdown choices, configs and keybinds stay the same in both languages."] = "選單語言。下拉選項、設定檔和快捷鍵在兩種語言下都一樣,切換不會影響設定。",
+        ["health"] = "血量",
+        [" - waiting for the cooldown in the void"] = " - 在虛空等冷卻",
+        ["Current Autoload Theme: "] = "目前自動載入的主題:",
+        ["Round %s"] = "第 %s 回合",
+        ["Round -"] = "第 - 回合",
+        ["Ping: %s | Data: %s"] = "延遲:%s | 資料延遲:%s",
+        ["Strip "] = "移除",
+        ["Sound ESP Mode"] = "聲音透視模式",
+        ["Highlight Color"] = "高亮顏色",
+        ["Use Loudness Color"] = "依音量變色",
+        ["starts in "] = "開始倒數 ",
+        ["ahead by "] = "領先 ",
+        ["behind by "] = "落後 ",
+    } end)()
+
+    -- labels built from a template ("Enable " .. title .. " ESP", P .. " Chams" ...): the captured part is
+    -- translated too. Only tried when there is no exact entry.
+    L.patterns = {
+        { "^Enable (.+) ESP$", "啟用%1透視" },
+        { "^Enable (.+)$", "啟用%1" },
+        { "^(.+) Allowed Hitboxes$", "%1可瞄準部位" },
+        { "^(.+) Chams Material$", "%1上色材質" },
+        { "^(.+) Chams$", "%1上色" },
+        { "^Strip (.+) Textures$", "%1去掉貼圖" },
+        { "^(.+) Highlight$", "%1高亮" },
+        { "^(.+) Wireframe$", "%1線框" },
+        { "^(.+) Mode$", "%1模式" },
+        { "^(.+) Enabled$", "%1 啟用" },
+        { "^Current Autoload Theme:? ?(.*)$", "目前自動載入的主題:%1" },
+    }
+
+    -- strings that have no translation, collected while Chinese is on (for adding them to L.zh later)
+    local missing, missingList, missingQueued = {}, {}, false
+    local function noteMissing(s)
+        if missing[s] or #missingList >= 3000 or #s > 400 then return end
+        missing[s] = true
+        missingList[#missingList + 1] = s
+        if missingQueued then return end
+        missingQueued = true
+        task.delay(3, function()
+            missingQueued = false
+            local wrf = K.fn("writefile")
+            if wrf then pcall(wrf, MISSING_FILE, table.concat(missingList, "\n")) end
+        end)
+    end
+
+    local zh = L.zh
+    local function T(s)
+        if L.lang ~= "zh" or type(s) ~= "string" or s == "" then return s end
+        local r = zh[s]
+        if r ~= nil then return r end
+        -- already Chinese (translated once before), or nothing to translate
+        if s:find("[\128-\255]") or not s:find("%a") then return s end
+        local lead, core, trail = s:match("^(%s*)(.-)(%s*)$")
+        if core ~= s and core ~= "" then
+            r = zh[core]
+            if r ~= nil then return lead .. r .. trail end
+        end
+        for _, p in ipairs(L.patterns) do
+            local caps = table.pack(s:match(p[1]))
+            if caps[1] ~= nil then
+                return (p[2]:gsub("%%(%d)", function(i) return T(caps[tonumber(i)] or "") end))
+            end
+        end
+        noteMissing(s)
+        return s
+    end
+    L.T = T
+    K.T = T
+    -- T for a template: K.TF("Round %s", n) -> "第 3 回合"
+    function K.TF(fmt, ...)
+        return string.format(T(fmt), ...)
+    end
+
+    -- a spec table as the page builders pass it, with its texts translated. A copy: the builder's own table is
+    -- never changed. Dropdown values stay as they are; what is shown comes from Labels.
+    local TEXT_KEYS = { "Label", "Title", "Description", "Tooltip", "Placeholder", "PlaceholderText", "PinHint",
+        "ActionText", "Content", "Subtitle", "Text", "Header", "Hint", "EmptyText" }
+    function L.spec(o)
+        if L.lang ~= "zh" then return o end
+        if type(o) == "string" then return T(o) end
+        if type(o) ~= "table" or getmetatable(o) ~= nil then return o end
+        local c = table.clone(o)
+        for _, k in ipairs(TEXT_KEYS) do
+            local v = c[k]
+            if type(v) == "string" then c[k] = T(v) end
+        end
+        if type(o.Label) == "string" then c._enLabel = o.Label end
+        local opts, old = c.Options, c.Labels
+        if type(opts) == "table" or type(old) == "table" then
+            local labels, changed = {}, false
+            if type(old) == "table" then
+                for k, v in pairs(old) do
+                    labels[k] = v
+                    if type(v) == "string" then
+                        local t = T(v)
+                        if t ~= v then labels[k] = t; changed = true end
+                    end
+                end
+            end
+            if type(opts) == "table" then
+                for _, opt in ipairs(opts) do
+                    if type(opt) == "string" and labels[opt] == nil then
+                        local t = T(opt)
+                        if t ~= opt then labels[opt] = t; changed = true end
+                    end
+                end
+            end
+            if changed then c.Labels = labels end
+        end
+        return c
+    end
+
+    -- which argument of a menu method is its spec (or its text)
+    local SPEC_ARG = {
+        AddTab = 1, AddSection = 1, AddMultiSection = 1, AddToggle = 1, AddSlider = 1, AddRangeSlider = 1,
+        AddButton = 1, AddLabel = 1, AddDivider = 1, AddTextBox = 1, AddDropdown = 1, AddMultiDropdown = 1,
+        AddList = 1, AddMultiList = 1, AddKeybind = 1, AddColor = 1, AddColorPicker = 1, AddSkinChanger = 1,
+        AddIconStrip = 1, AddOrdered = 1, AddGroup = 1, Grid = 1, Dialog = 1, AddPage = 1,
+        SetLabel = 1, SetTooltip = 1, _make = 2,
+    }
+    local done = setmetatable({}, { __mode = "k" })
+    local labelDone = setmetatable({}, { __mode = "k" })
+    local function classOf(o)
+        local mt = getmetatable(o)
+        if type(mt) == "table" then
+            local idx = rawget(mt, "__index")
+            if type(idx) == "table" then return idx end
+        end
+        return nil
+    end
+    local wrapObj
+    -- a label's Set(text) shows text: translate it (only label classes get this)
+    local function patchLabelSet(o)
+        if type(o) ~= "table" then return end
+        local cls = classOf(o)
+        if cls == nil or labelDone[cls] then return end
+        labelDone[cls] = true
+        local orig = cls.Set
+        if type(orig) ~= "function" then return end
+        pcall(rawset, cls, "Set", function(self, v, ...)
+            if L.lang == "zh" and type(v) == "string" then v = T(v) end
+            return orig(self, v, ...)
+        end)
+    end
+    local function patchClass(cls)
+        if done[cls] then return end
+        done[cls] = true
+        for name, at in pairs(SPEC_ARG) do
+            local orig = cls[name]
+            if type(orig) == "function" then
+                pcall(rawset, cls, name, function(self, ...)
+                    if L.lang ~= "zh" then return orig(self, ...) end
+                    local args = table.pack(...)
+                    local kind = args[1]
+                    args[at] = L.spec(args[at])
+                    -- Dialog(o, builder) / AddPage(o, builder): the builder gets new menu objects
+                    if name == "Dialog" or name == "AddPage" then
+                        for i = 1, args.n do
+                            local f = args[i]
+                            if type(f) == "function" then
+                                args[i] = function(a, ...)
+                                    wrapObj(a)
+                                    return f(a, ...)
+                                end
+                            end
+                        end
+                    end
+                    local res = table.pack(orig(self, table.unpack(args, 1, args.n)))
+                    for i = 1, res.n do wrapObj(res[i]) end
+                    if name == "AddLabel" or (name == "_make" and kind == "Label") then patchLabelSet(res[1]) end
+                    return table.unpack(res, 1, res.n)
+                end)
+            end
+        end
+    end
+    function wrapObj(o)
+        if type(o) ~= "table" then return end
+        local cls = classOf(o)
+        if cls ~= nil then patchClass(cls) end
+        -- objects with their own methods (dialogs) are patched as they are
+        if rawget(o, "AddPage") ~= nil or rawget(o, "AddSection") ~= nil then patchClass(o) end
+    end
+    -- called with every menu right after it is made; does nothing while the language is English
+    function L.attach(menu)
+        if L.lang ~= "zh" then return end
+        local ok, err = pcall(wrapObj, menu)
+        if not ok and K.Log then K.Log("ui", "menu language: could not attach: " .. tostring(err)) end
+    end
+    -- notification parts ({ {Text=..}, .. } or a string)
+    function L.parts(p)
+        if L.lang ~= "zh" then return p end
+        if type(p) == "string" then return T(p) end
+        if type(p) ~= "table" then return p end
+        local out = {}
+        for i, part in ipairs(p) do
+            if type(part) == "table" and type(part.Text) == "string" and not part.Accent then
+                local c = table.clone(part)
+                c.Text = T(part.Text)
+                out[i] = c
+            else
+                out[i] = part
+            end
+        end
+        return out
+    end
+
+    local function readLang()
+        local g
+        pcall(function() g = getgenv().LxYLang end)
+        if g == "zh" or g == "en" then return g end
+        local isf, rf = K.fn("isfile"), K.fn("readfile")
+        if isf and rf then
+            local ok, v = pcall(function() return isf(LANG_FILE) and rf(LANG_FILE) or nil end)
+            if ok and type(v) == "string" then
+                v = v:gsub("%s", "")
+                if v == "zh" or v == "en" then return v end
+            end
+        end
+        return "en"
+    end
+    L.lang = readLang()
+    L.Choices = { "English", "繁體中文" }
+    function L.Choice() return L.lang == "zh" and "繁體中文" or "English" end
+    -- switch language: saved, and the menu is rebuilt in the new language (like switching UI Style)
+    function L.Set(lang)
+        if lang == "繁體中文" then lang = "zh" elseif lang == "English" then lang = "en" end
+        if (lang ~= "zh" and lang ~= "en") or lang == L.lang then return end
+        L.lang = lang
+        pcall(function() getgenv().LxYLang = lang end)
+        local wrf = K.fn("writefile")
+        if wrf then pcall(wrf, LANG_FILE, lang) end
+        if K.Log then K.Log("ui", "menu language: " .. lang) end
+        if K.RebuildMenu and K.UIMode then task.defer(K.RebuildMenu, K.UIMode()) end
+    end
+end
+
 K.Mark("pcall wrapper + diagnostics")
 --==========================================================================
 --  pcall wrapper: an error swallowed by a pcall is still recorded (once per distinct message, with a repeat
@@ -14990,8 +16467,8 @@ end
 return setmetatable({
 _menu = arg,
 _metrics = v119,
-Label = arg2.Label,
-_tooltip = arg2.Tooltip,
+Label = K.T(arg2.Label),
+_tooltip = K.T(arg2.Tooltip),
 _bare = flag19,
 _isBareFlexRoot = false,
 _visible = v86[34],
@@ -16520,7 +17997,7 @@ local uiStroke = Instance.new("UIStroke")
 uiStroke.Color = v121.get("Outline")
 uiStroke.Parent = instance
 local textBox = Instance.new("TextBox")
-textBox.PlaceholderText = v86[190]
+textBox.PlaceholderText = K.T(v86[190])
 textBox.PlaceholderColor3 = v121.get("Unselected")
 textBox.FontFace = menu.Fonts.Main
 textBox.TextColor3 = v121.get(v86[174])
@@ -17817,7 +19294,7 @@ frame.BorderSizePixel = v86[186]
 frame.Parent = root
 local textLabel = Instance.new("TextLabel")
 textLabel.FontFace = v117.Medium
-textLabel.Text = v86[184]
+textLabel.Text = K.T(v86[184])
 textLabel.AnchorPoint = Vector2.new(0, 0.5)
 textLabel.BackgroundTransparency = v86[63]
 textLabel.Position = UDim2.fromScale(v86[186], 0.5)
@@ -18085,7 +19562,7 @@ frame15.BorderSizePixel = 0
 frame15.Parent = root
 local textLabel2 = Instance.new("TextLabel")
 textLabel2.FontFace = v117.Medium
-textLabel2.Text = "Input"
+textLabel2.Text = K.T("Input")
 textLabel2.AnchorPoint = Vector2.new(0, v86[101])
 textLabel2.BackgroundTransparency = 1
 textLabel2.Position = UDim2.fromScale(0, v86[101])
@@ -18290,7 +19767,7 @@ instance15.Visible = arg4.Animatable
 instance15.Parent = root
 local textLabel3 = Instance.new("TextLabel")
 textLabel3.FontFace = v117.Medium
-textLabel3.Text = "Animation"
+textLabel3.Text = K.T("Animation")
 textLabel3.AnchorPoint = Vector2.new(0, v86[101])
 textLabel3.BackgroundTransparency = 1
 textLabel3.Position = UDim2.fromScale(v86[186], 0.5)
@@ -19782,7 +21259,7 @@ local function fn37(arg)
 local panel = arg._panel
 
 if panel ~= nil then
-panel.KeyValue.Text = "Key: " .. fn36(arg.Value.Key)
+panel.KeyValue.Text = K.T("Key: ") .. fn36(arg.Value.Key)
 end
 end
 
@@ -19819,7 +21296,7 @@ textButton.LayoutOrder = 0
 textButton.Parent = parent
 local textLabel = Instance.new("TextLabel")
 textLabel.FontFace = v117.Medium
-textLabel.Text = "Keybind"
+textLabel.Text = K.T("Keybind")
 textLabel.AnchorPoint = Vector2.new(0, 0.5)
 textLabel.BackgroundTransparency = 1
 textLabel.Position = UDim2.fromScale(0, v86[101])
@@ -20160,7 +21637,7 @@ if panel == nil then
 return
 end
 arg.Capturing = v86[34]
-panel.KeyValue.Text = "Key: ..."
+panel.KeyValue.Text = K.T("Key: ...")
 arg._menu:Tween(panel.KeyValue, { TextColor3 = v122.get("Accent") })
 
 arg._cancelCapture = arg._menu:CaptureKey(function(arg2)
@@ -20624,7 +22101,7 @@ local uiStroke = Instance.new("UIStroke")
 arg3.Batch:Bind(uiStroke, "Color", "Outline")
 uiStroke.Parent = instance
 local textBox = Instance.new("TextBox")
-textBox.PlaceholderText = v86[190]
+textBox.PlaceholderText = K.T(v86[190])
 textBox.PlaceholderColor3 = v118.get("Unselected")
 textBox.FontFace = menu.Fonts.Main
 textBox.Text = ""
@@ -21658,8 +23135,8 @@ local visible = arg.State == "Ready"
 rt.Holder.Visible = visible
 rt.StateRoot.Visible = not visible
 local v120, v121 = fn39(arg.State)
-rt.StateTitle.Text = v120
-rt.StateMessage.Text = arg._stateMessage or v121
+rt.StateTitle.Text = K.T(v120)
+rt.StateMessage.Text = K.T(arg._stateMessage or v121)
 rt.ClearFilter.Visible = arg.State == "NoMatches" and arg._onClearFilter ~= nil
 rt.UpdateHeight()
 end
@@ -22035,7 +23512,7 @@ textButton.BackgroundColor3 = v118.get("ElementBackground")
 textButton.BorderSizePixel = 0
 textButton.AutoButtonColor = false
 textButton.FontFace = v116.SemiBold
-textButton.Text = "Clear Search"
+textButton.Text = K.T("Clear Search")
 textButton.TextSize = 15
 textButton.Visible = v86[153]
 ctx.Batch:Bind(textButton, "BackgroundColor3", "ElementBackground")
@@ -25743,7 +27220,7 @@ instance.SortOrder = Enum.SortOrder.LayoutOrder
 instance.Padding = UDim.new(0, v86[54])
 instance.Parent = frame2
 local textLabel = Instance.new("TextLabel")
-textLabel.Text = "KEYBINDS"
+textLabel.Text = K.T("KEYBINDS")
 textLabel.BackgroundTransparency = 1
 textLabel.Size = UDim2.new(1, 0, 0, 12)
 textLabel.BorderSizePixel = 0
@@ -26200,7 +27677,7 @@ textButton.Position = UDim2.new(0.5, 0, 0, 40)
 textButton.Size = UDim2.fromOffset(140, 40)
 textButton.BackgroundColor3 = v118.get("Accent")
 textButton.BorderSizePixel = 0
-textButton.Text = "Done"
+textButton.Text = K.T("Done")
 textButton.FontFace = v115.Medium
 textButton.TextSize = 16
 textButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -26993,7 +28470,7 @@ local textLabel = Instance.new("TextLabel")
 textLabel.BackgroundTransparency = v86[63]
 textLabel.Position = UDim2.fromOffset(4, 4)
 textLabel.Size = UDim2.new(1, -8, v86[186], 28)
-textLabel.Text = "No matches."
+textLabel.Text = K.T("No matches.")
 textLabel.TextSize = 12
 textLabel.Visible = v86[153]
 textLabel.FontFace = menu.Fonts.Main
@@ -30307,6 +31784,7 @@ end
 if not isDetection then
 return
 end
+if K.L10N then arg2 = K.L10N.parts(arg2) end
 arg3 = arg3 or {}
 local v120 = arg:_SideSpec()
 arg._counter = arg._counter + 1
@@ -30732,6 +32210,17 @@ return { Page = v120, Grid = v121 }
 end
 
 local function fn40(arg, arg2, arg3)
+if K.L10N then
+arg:AddDropdown({
+Label = "Language / 語言",
+Options = K.L10N.Choices,
+Default = K.L10N.Choice(),
+Tooltip = "Menu language. Dropdown choices, configs and keybinds stay the same in both languages.",
+OnChanged = function(choice)
+if choice ~= nil then K.L10N.Set(choice) end
+end,
+})
+end
 arg:AddDropdown({
 Label = "UI Style",
 Options = { "Starlight", "Lite", "Matcha", "KH V2", "Setsuna", "Setsuna Drop", "Classic" },
@@ -72598,7 +74087,7 @@ local function fn35()
         new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = title})
         new("TextLabel", {
             Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Font = Enum.Font.GothamBold, TextSize = 16,
-            TextColor3 = Color3.new(1, 1, 1), Text = "Rivals Leaderboard", Parent = title,
+            TextColor3 = Color3.new(1, 1, 1), Text = K.T("Rivals Leaderboard"), Parent = title,
         })
         local list = new("ScrollingFrame", {
             Size = UDim2.new(1, -10, 1, -46), Position = UDim2.new(0, 5, 0, 40), BackgroundTransparency = 1,
@@ -72694,7 +74183,7 @@ local function fn35()
         new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = bar})
         new("TextLabel", {
             Size = UDim2.new(1, -8, 1, 0), Position = UDim2.new(0, 8, 0, 0), BackgroundTransparency = 1, Font = Enum.Font.GothamBold,
-            TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255), Text = "Rivals HUD", TextXAlignment = Enum.TextXAlignment.Left, Parent = bar,
+            TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255), Text = K.T("Rivals HUD"), TextXAlignment = Enum.TextXAlignment.Left, Parent = bar,
         })
         local function line(y)
             return new("TextLabel", {
@@ -72717,7 +74206,7 @@ local function fn35()
             pingFrames = pingFrames + 1
             local now = os.clock()
             if now - last >= 1 then
-                hud.fps.Text = "FPS: " .. frames
+                hud.fps.Text = K.T("FPS: ") .. frames
                 frames = 0
                 last = now
             end
@@ -72726,7 +74215,7 @@ local function fn35()
                 -- seconds, x1000), Data = Stats.Network "Data Ping" from the developer console. No guessed conversion.
                 local ok, ping = pcall(function() return math.floor(localPlayer:GetNetworkPing() * 1000 + 0.5) end)
                 local okD, data = pcall(function() return math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5) end)
-                hud.ping.Text = string.format("Ping: %s | Data: %s", (ok and ping) and (ping .. "ms") or "-", (okD and data) and (data .. "ms") or "-")
+                hud.ping.Text = K.TF("Ping: %s | Data: %s", (ok and ping) and (ping .. "ms") or "-", (okD and data) and (data .. "ms") or "-")
             end
             if pingFrames >= 60 then
                 pingFrames = 0
@@ -75164,6 +76653,7 @@ if mode=="Setsuna Drop" and K.SetsunaUI~=nil then MenuClass=K.SetsunaUI.Drop end
 if mode=="Matcha" and K.SetsunaUI~=nil and K.SetsunaUI.Matcha~=nil then MenuClass=K.SetsunaUI.Matcha end
 if mode=="KH V2" and K.SetsunaUI~=nil and K.SetsunaUI.V2~=nil then MenuClass=K.SetsunaUI.V2 end
 local t=MenuClass.new({Icon=(K.LoadLogo and K.LoadLogo() or K.LithiumLogo),Title=string.format("LxYHook | Rivals | %s",tostring("Premium Build")),Directory=K.AccountDir,Config=l.ReactiveStoreAdapter,ColorAnimation=l.ColorAnimation,Persistence=I,State=l.GeneralState,StateData=l.GeneralStateData,OnUnload=function()e:Destroy();end})
+if K.L10N then K.L10N.attach(t) end
 current=t
 e:Add(t)
 local ids=l.PlayerIdentities
@@ -87948,7 +89438,7 @@ end
         self.Clicked = Signal.new()
         self:_defer(function()
             self._el = sec._gb:CreateButton({
-                Name = self._confirming and "Click again to confirm" or self._label,
+                Name = self._confirming and K.T("Click again to confirm") or self._label,
                 Tooltip = o.Tooltip or "",
                 Callback = function() self:_click() end,
             }, uid("bt"))
@@ -87963,7 +89453,7 @@ end
         if self._disabled then return end
         if self._confirm and not self._confirming then
             self._confirming = true
-            self:_rename("Click again to confirm")
+            self:_rename(K.T("Click again to confirm"))
             task.delay(3, function()
                 if self._confirming then
                     self._confirming = false
@@ -88330,7 +89820,7 @@ end
 
     ----------------------------------------------------------------------------------------------- keybind
     local function keyToText(key)
-        if typeof(key) ~= "EnumItem" then return "No Bind" end
+        if typeof(key) ~= "EnumItem" then return K.T("No Bind") end
         if key.EnumType == Enum.UserInputType then
             if key == Enum.UserInputType.MouseButton1 then return "MB1" end
             if key == Enum.UserInputType.MouseButton2 then return "MB2" end
@@ -88644,7 +90134,7 @@ end
     Makers.SkinChanger = function(sec)
         if not sec._menu._skinNotice then
             sec._menu._skinNotice = true
-            sec:_make("Label", { Label = "The skin, wrap, charm and finisher picker is in the LY and Classic menus." })
+            sec:_make("Label", { Label = K.T("The skin, wrap, charm and finisher picker is in the LY and Classic menus.") })
         end
         return stub
     end
@@ -88991,7 +90481,7 @@ end
             Icon = o.Icon or false,
             Description = o.Description or false,
         }, Page)
-        if self._isSettings and page.Label == "Theme" then page._theme = true end
+        if self._isSettings and (o._enLabel or page.Label) == "Theme" then page._theme = true end
         self._pages[#self._pages + 1] = page
         return page
     end
@@ -89017,7 +90507,7 @@ end
         end
         if menu._manage == nil then
             -- a sidebar section like a tab; its Starlight section is made with the window
-            menu._manage = { Label = "Manage", _menu = menu, _pagesOrder = {} }
+            menu._manage = { Label = K.T("Manage"), _menu = menu, _pagesOrder = {} }
             menu._owners[#menu._owners + 1] = menu._manage
             if menu._materialized then menu._manage._ts = menu._win:CreateTabSection("Manage") end
         end
@@ -89049,7 +90539,7 @@ end
                             local ok, text = pcall(desc)
                             desc = ok and text or ""
                         end
-                        notify(tostring(desc or "Click again to confirm."))
+                        notify(K.T(tostring(desc or "Click again to confirm.")))
                         button:_rename("Confirm: " .. actionText)
                         task.delay(4, function()
                             if confirming then
@@ -89211,11 +90701,11 @@ end
             else
                 pcall(function()
                     local section = home.Instances.Button.Parent
-                    section.Header.Text = "Welcome"
+                    section.Header.Text = K.T("Welcome")
                     section.Header.Visible = true
                     section.Name = "TAB_SECTION_Welcome"
                     section.LayoutOrder = -1
-                    home.Instances.Button.Header.Text = "Dashboard"
+                    home.Instances.Button.Header.Text = K.T("Dashboard")
                     local discord = home.Instances.Page.Holder.Left.Discord
                     discord.Header.Text = "Lxyhook"
                     discord.Subheader.Text = "6767676767676767"
@@ -89912,7 +91402,7 @@ end
                 row.MouseEnter:Connect(function() st.Color = m._pal.acc end)
                 row.MouseLeave:Connect(function() st.Color = m._pal.outline end)
             end
-            local t = text(m, row, self._confirming and "Click again to confirm" or self._label, 14, "value", true)
+            local t = text(m, row, self._confirming and K.T("Click again to confirm") or self._label, 14, "value", true)
             t.Size = UDim2.fromScale(1, 1)
             t.TextXAlignment = Enum.TextXAlignment.Center
             t.TextWrapped = true
@@ -90286,7 +91776,7 @@ end
             m:_paint(hex, "TextColor3", "text")
             local preview = mk("Frame", { Position = UDim2.fromOffset(142, 202), Size = UDim2.fromOffset(78, 28), BorderSizePixel = 0, ZIndex = 62 }, frame)
             corner(preview, 6)
-            local ok = mk("TextButton", { Position = UDim2.fromOffset(12, 240), Size = UDim2.fromOffset(208, 34), BorderSizePixel = 0, Text = "Done", TextSize = 14,
+            local ok = mk("TextButton", { Position = UDim2.fromOffset(12, 240), Size = UDim2.fromOffset(208, 34), BorderSizePixel = 0, Text = K.T("Done"), TextSize = 14,
                 Font = Enum.Font.GothamBold, AutoButtonColor = false, ZIndex = 62 }, frame)
             corner(ok, 8)
             m:_paint(ok, "BackgroundColor3", "inner")
@@ -90545,8 +92035,8 @@ end
             self._holder.Visible = ready
             self._overlay.Visible = not ready
             local info = STATE_TEXT[self.State] or { "", "" }
-            self._stTitle.Text = info[1]
-            self._stMsg.Text = self._stateMsg or info[2]
+            self._stTitle.Text = K.T(info[1])
+            self._stMsg.Text = K.T(self._stateMsg or info[2])
             self._clear.Visible = self.State == "NoMatches" and self._onClear ~= nil
         end
 
@@ -90626,7 +92116,7 @@ end
             local stMsg = text(m, overlay, "", 13, "dim", false)
             stMsg.Size, stMsg.LayoutOrder, stMsg.TextXAlignment, stMsg.TextWrapped = UDim2.new(1, -20, 0, 36), 2, Enum.TextXAlignment.Center, true
             local clear = mk("TextButton", {
-                Size = UDim2.fromOffset(120, 30), Text = "Clear search", Font = Enum.Font.GothamMedium, TextSize = 13,
+                Size = UDim2.fromOffset(120, 30), Text = K.T("Clear search"), Font = Enum.Font.GothamMedium, TextSize = 13,
                 BorderSizePixel = 0, AutoButtonColor = true, Visible = false, LayoutOrder = 3,
             }, overlay)
             corner(clear, 8)
@@ -90893,7 +92383,7 @@ end
             _sections = {}, _realized = false, _secCount = 0,
         }, SPage)
         -- Lite builds Starlight's own Theme page (its theme, its colours, its theme files), not the script's token list
-        if self._isSettings and page.Label == "Theme" and self._menu._lite then
+        if self._isSettings and (o._enLabel or page.Label) == "Theme" and self._menu._lite then
             page._liteTheme = true
             page._columns = 1
         end
@@ -90951,7 +92441,7 @@ end
                             local ok, t = pcall(desc)
                             desc = ok and t or ""
                         end
-                        notify(tostring(desc or "Click again to confirm."))
+                        notify(K.T(tostring(desc or "Click again to confirm.")))
                         button:_rename("Confirm: " .. actionText)
                         task.delay(4, function()
                             if confirming then
@@ -92331,7 +93821,7 @@ end
     function SLite:_buildThemePage(page)
         local m = self
         -- one groupbox, in the order of Starlight's own Theme page
-        local colors = newSSection(page, { Title = "Themes" })
+        local colors = newSSection(page, { Title = K.T("Themes") })
         local manage = colors
         self._themeCtls = {}
         pcall(ensureFolder, self._themeDir)
@@ -92965,7 +94455,7 @@ end
         local openInner = mk("Frame", { BackgroundColor3 = Color3.fromRGB(20, 20, 20), BackgroundTransparency = .6, BorderColor3 = Color3.fromRGB(50, 50, 50),
             BorderMode = Enum.BorderMode.Inset, BorderSizePixel = 1, Size = UDim2.fromScale(1, 1), ZIndex = 6 }, openBox)
         mk("UICorner", { CornerRadius = UDim.new(0, 9) }, openInner)
-        local openBtn = mk("TextButton", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Text = "Open", Font = Enum.Font.Ubuntu,
+        local openBtn = mk("TextButton", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Text = K.T("Open"), Font = Enum.Font.Ubuntu,
             TextSize = 14, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = .5, TextYAlignment = Enum.TextYAlignment.Center,
             AutoButtonColor = false, ZIndex = 7 }, openInner)
         openBtn.Activated:Connect(function() self:SetVisible(not self.Visible) end)
@@ -93184,7 +94674,7 @@ do
         mk("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 10) }, list)
         mk("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, list)
         listTitle = mk("TextLabel", { Name = "Title", LayoutOrder = 0, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 18),
-            Font = Enum.Font.GothamBold, TextSize = 13, Text = "Keybinds", TextXAlignment = Enum.TextXAlignment.Left }, list)
+            Font = Enum.Font.GothamBold, TextSize = 13, Text = K.T("Keybinds"), TextXAlignment = Enum.TextXAlignment.Left }, list)
         rows = list
         place(list, "keybinds", UDim2.fromOffset(14, 56))
         draggable(list, "keybinds")
@@ -97020,14 +98510,14 @@ do -- TMH
             end)
 
             teamHp, enemyHp = math.ceil(teamHp), math.ceil(enemyHp)
-            put(hpLine, "Text", "Team HP : " .. paint(tostring(teamHp), accent) .. "  |  Enemy team Hp : " .. paint(tostring(enemyHp), RED))
+            put(hpLine, "Text", K.T("Team HP : ") .. paint(tostring(teamHp), accent) .. K.T("  |  Enemy team Hp : ") .. paint(tostring(enemyHp), RED))
             local diff = teamHp - enemyHp
             if diff > 0 then
-                put(leadLine, "Text", "You are winning by " .. paint(tostring(diff), accent))
+                put(leadLine, "Text", K.T("You are winning by ") .. paint(tostring(diff), accent))
             elseif diff < 0 then
-                put(leadLine, "Text", "You are losing by " .. paint(tostring(-diff), RED))
+                put(leadLine, "Text", K.T("You are losing by ") .. paint(tostring(-diff), RED))
             else
-                put(leadLine, "Text", "You are " .. paint("tied", YELLOW))
+                put(leadLine, "Text", K.T("You are ") .. paint(K.T("tied"), YELLOW))
             end
 
             --  enemy rows
@@ -97050,11 +98540,11 @@ do -- TMH
                     put(row.bar, "Position", UDim2.fromOffset(8, 4 + (ROW_H - 8) - math.max(math.floor((ROW_H - 8) * (alive and ratio or 1) + 0.5), 2)))
                     put(row.name, "Text", player.Name)
                     put(row.name, "TextColor3", alive and WHITE or GREY)
-                    put(row.hp, "Text", alive and string.format("%d / %d", math.ceil(e.hp), math.ceil(maxHp)) or "dead")
-                    put(row.weapon, "Text", "weapon: " .. (alive and weaponOf(player) or "-"))
+                    put(row.hp, "Text", alive and string.format("%d / %d", math.ceil(e.hp), math.ceil(maxHp)) or K.T("dead"))
+                    put(row.weapon, "Text", K.T("weapon: ") .. (alive and weaponOf(player) or "-"))
                     if s.ShowStatus ~= false then
                         local rage = K.IsTaggedHacker(player)
-                        put(row.status, "Text", "status: " .. (rage and paint("RAGE", RED) or paint("LEGIT", GREEN)))
+                        put(row.status, "Text", K.T("status: ") .. (rage and paint(K.T("RAGE"), RED) or paint(K.T("LEGIT"), GREEN)))
                     else
                         put(row.status, "Text", "")
                     end
@@ -97069,7 +98559,7 @@ do -- TMH
                 local target = K.HudAimTarget
                 local fresh = target ~= nil and K.HudAimTargetAt ~= nil and now - K.HudAimTargetAt < 0.4
                 put(footer, "Position", UDim2.fromOffset(8, footerY))
-                put(footer, "Text", "Target : " .. (fresh and paint(target.Name, accent) or paint("none", GREY)))
+                put(footer, "Text", K.T("Target : ") .. (fresh and paint(target.Name, accent) or paint(K.T("none"), GREY)))
             end
             put(root, "Size", UDim2.fromOffset(WIDTH, footerY + (showTarget and FOOTER_H or 4)))
             put(root, "Visible", true)
@@ -97338,27 +98828,27 @@ do -- SCH
             --  round, state, lead
             local roundNum = tonumber(data.RoundNum)
             local status = data.Status
-            local stateText = STATUS_TEXT[status] or (status ~= nil and tostring(status) or "-")
-            put(roundLine, "Text", (roundNum and ("Round " .. roundNum) or "Round -") .. "  |  " .. stateText)
+            local stateText = K.T(STATUS_TEXT[status] or (status ~= nil and tostring(status) or "-"))
+            put(roundLine, "Text", (roundNum and K.TF("Round %s", roundNum) or K.T("Round -")) .. "  |  " .. stateText)
 
             --  time left: the round clock while the round is on, the countdown while it is starting
             local left = timeLeft()
             if left == "inf" and status == "RoundStarted" then
-                put(timer, "Text", paint("no time limit", GREY))
+                put(timer, "Text", paint(K.T("no time limit"), GREY))
             elseif type(left) == "number" and status == "RoundStarted" then
-                put(timer, "Text", paint(clockText(left), left <= 10 and RED or (left <= 30 and YELLOW or WHITE)) .. paint("  left", GREY))
+                put(timer, "Text", paint(clockText(left), left <= 10 and RED or (left <= 30 and YELLOW or WHITE)) .. paint(K.T("  left"), GREY))
             elseif type(left) == "number" and status == "RoundStarting" and left > 0 then
-                put(timer, "Text", paint("starts in ", GREY) .. paint(tostring(math.ceil(left)), accent))
+                put(timer, "Text", paint(K.T("starts in "), GREY) .. paint(tostring(math.ceil(left)), accent))
             else
                 put(timer, "Text", paint("-", GREY))
             end
             local diff = ours - theirs
             if diff > 0 then
-                put(leadLine, "Text", "ahead by " .. paint(tostring(diff), accent))
+                put(leadLine, "Text", K.T("ahead by ") .. paint(tostring(diff), accent))
             elseif diff < 0 then
-                put(leadLine, "Text", "behind by " .. paint(tostring(-diff), RED))
+                put(leadLine, "Text", K.T("behind by ") .. paint(tostring(-diff), RED))
             else
-                put(leadLine, "Text", paint("tied", YELLOW))
+                put(leadLine, "Text", paint(K.T("tied"), YELLOW))
             end
             put(root, "Visible", true)
         end)
