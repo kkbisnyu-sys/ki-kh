@@ -15104,6 +15104,291 @@ tbl17.eZ = function()
     end
     return Offline
 end
+--==========================================================================
+--  Classic menu: frost glass skin (picked 2026-11-28 from the Classic style sheet, option C).
+--  The Classic modules below take every colour from theme tokens (module A: Bind / BindGradient). This layer sits
+--  on those bindings, so the module code keeps its own layout and logic:
+--    * a surface bound to a background token, and a UIStroke bound to Outline, is drawn see-through: its opacity
+--      (1 - transparency) is multiplied by the factor of its token and of the layer it is on (win = the menu
+--      window, hud = watermark and keybind list, pop = popups, tooltips and dialogs). What the module code writes
+--      later, directly or through the menu's tweener, is mapped the same way, so hidden stays hidden (1 -> 1);
+--    * a Frame bound to Accent (toggle and slider fills, indicators) gets a soft accent gradient;
+--    * small corner radii (2..8 px) are made 1.5x rounder; the window, section boxes and the rail bubble get
+--      their own radius where they are built;
+--    * the window gets the acrylic blur Lite uses (K.StarlightAcrylic: a glass part in front of the camera);
+--    * the palette and the font (Nunito) change; a saved theme colour still equal to the old default is read as
+--      the new default (migrate), colours the user picked are kept.
+--  Only instances under the Classic menu's own ScreenGuis are touched (attach), so the other menu forms and
+--  anything else that shares module A stay as they were (the toasts of the notification module are shared by
+--  every form and keep their look). getgenv().KiciaClassicGlass = false switches the whole layer off (the old
+--  opaque look, palette and font); getgenv().KiciaClassicAcrylic = false keeps the glass but drops the blur.
+--==========================================================================
+K.ClassicGlass = (function()
+    local G = {}
+    local env = (getgenv and getgenv()) or {}
+    local enabled = env.KiciaClassicGlass ~= false
+    G.Enabled = enabled
+    local rgb = Color3.fromRGB
+    -- the palette before the glass skin (the config defaults still carry it)
+    local OLD = {
+        Accent = rgb(154, 213, 222), Outline = rgb(24, 25, 24), Background = rgb(0, 0, 0),
+        ElementBackground = rgb(6, 6, 6), TabButtonSelected = rgb(51, 65, 70), Unselected = rgb(75, 72, 72),
+        TextColor = rgb(197, 197, 197), ToggleCircleUnselected = rgb(70, 85, 87),
+        ToggleBackgroundUnselected = rgb(12, 13, 13), GradientTop = rgb(14, 16, 16), GradientMid = rgb(6, 6, 6),
+        GradientDark = rgb(3, 3, 3), GradientDeep = rgb(0, 0, 0), TabHighlight = rgb(51, 65, 70),
+        TabShadow = rgb(30, 51, 61), Shadow = rgb(0, 0, 0),
+    }
+    -- cool slate tones: light enough that a see-through surface reads as frosted, not as a dark hole
+    local GLASS = {
+        Accent = rgb(154, 213, 222), Outline = rgb(206, 219, 233), Background = rgb(16, 20, 27),
+        ElementBackground = rgb(66, 75, 92), TabButtonSelected = rgb(78, 90, 108), Unselected = rgb(148, 159, 173),
+        TextColor = rgb(238, 242, 247), ToggleCircleUnselected = rgb(206, 214, 225),
+        ToggleBackgroundUnselected = rgb(72, 81, 96), GradientTop = rgb(54, 62, 77), GradientMid = rgb(42, 49, 62),
+        GradientDark = rgb(31, 37, 48), GradientDeep = rgb(16, 20, 27), TabHighlight = rgb(104, 116, 136),
+        TabShadow = rgb(52, 66, 82), Shadow = rgb(0, 0, 0),
+    }
+    G.Palette = enabled and GLASS or OLD
+    if enabled then
+        local function nunito(weight) return Font.new("rbxasset://fonts/families/Nunito.json", weight, Enum.FontStyle.Normal) end
+        G.Fonts = { Medium = nunito(Enum.FontWeight.Medium), SemiBold = nunito(Enum.FontWeight.SemiBold), Bold = nunito(Enum.FontWeight.Bold) }
+    end
+    G.WindowRadius = enabled and 16 or 6
+    G.SectionRadius = enabled and 12 or 6
+    G.BubbleRadius = enabled and 13 or 6
+
+    -- opacity factors by token and layer
+    local function f(win, hud, pop) return { win = win, hud = hud, pop = pop } end
+    local FILL = {
+        Background = f(.62, .8, .94),
+        ElementBackground = f(.42, .55, .9),
+        TabButtonSelected = f(.5, .6, .9),
+        TabHighlight = f(.5, .6, .9),
+        TabShadow = f(.5, .6, .9),
+        GradientTop = f(.45, .7, .92),
+        GradientMid = f(.45, .7, .92),
+        GradientDark = f(.45, .7, .92),
+        GradientDeep = f(.45, .7, .92),
+        ToggleBackgroundUnselected = f(.7, .8, .9),
+        Outline = f(.2, .25, .35),
+    }
+    local STROKE = f(.16, .2, .26)
+    local TINT = rgb(196, 178, 255) -- accent x TINT = the far end of the accent gradient (a cooler violet of the accent)
+
+    local layers = {}                                    -- ScreenGui -> layer
+    local pinned = setmetatable({}, { __mode = "k" })    -- subtree root -> layer (dialogs: pop)
+    local keyOf = setmetatable({}, { __mode = "k" })     -- watched instance -> token ("Stroke" for a UIStroke)
+    local propOf = setmetatable({}, { __mode = "k" })
+    local written = setmetatable({}, { __mode = "k" })   -- the value this layer wrote last
+    local busy = setmetatable({}, { __mode = "k" })      -- the menu tween running on it (its target is mapped already)
+    local accentPending = setmetatable({}, { __mode = "k" })
+    local cornerDone = setmetatable({}, { __mode = "k" })
+
+    local function layerOf(inst)
+        local p = inst
+        while p ~= nil do
+            local l = pinned[p] or layers[p]
+            if l ~= nil then return l end
+            p = p.Parent
+        end
+        return nil
+    end
+    local function factor(inst, key)
+        local l = layerOf(inst)
+        if l == nil then return nil end
+        if key == "Stroke" then return STROKE[l] end
+        local t = FILL[key]
+        return t ~= nil and t[l] or nil
+    end
+    local function map(k, t)
+        if t >= 1 then return 1 end
+        return 1 - (1 - t) * k
+    end
+    local function apply(inst)
+        local key = keyOf[inst]
+        if key == nil or busy[inst] ~= nil then return end
+        local k = factor(inst, key)
+        if k == nil then return end
+        local prop = propOf[inst]
+        local cur = inst[prop]
+        local w = written[inst]
+        if w ~= nil and math.abs(cur - w) < 1e-3 then return end
+        local m = map(k, cur)
+        written[inst] = m
+        if math.abs(m - cur) > 1e-4 then inst[prop] = m end
+    end
+    local function watch(inst, prop, key)
+        if keyOf[inst] ~= nil then
+            keyOf[inst] = key
+            return
+        end
+        keyOf[inst], propOf[inst] = key, prop
+        inst:GetPropertyChangedSignal(prop):Connect(function() apply(inst) end)
+        task.defer(apply, inst)
+    end
+    local function addAccent(inst)
+        if not accentPending[inst] or inst.Parent == nil then return end
+        local l = layerOf(inst)
+        if l == nil then return end
+        accentPending[inst] = nil
+        if l == "pop" or inst:FindFirstChildWhichIsA("UIGradient") ~= nil then return end
+        local g = Instance.new("UIGradient")
+        g.Name = "GlassAccent"
+        g.Color = ColorSequence.new(Color3.new(1, 1, 1), TINT)
+        g.Parent = inst
+    end
+    local function corner(c)
+        if cornerDone[c] then return end
+        cornerDone[c] = true
+        local r = c.CornerRadius
+        if r.Scale == 0 and r.Offset >= 2 and r.Offset <= 8 then
+            c.CornerRadius = UDim.new(0, math.floor(r.Offset * 1.5 + 0.5))
+        end
+    end
+    local function onAdded(d)
+        if d:IsA("UICorner") then
+            task.defer(corner, d)
+            return
+        end
+        if keyOf[d] ~= nil then task.defer(apply, d) end
+        if accentPending[d] then task.defer(addAccent, d) end
+    end
+
+    -- module A: a token was bound to a property
+    function G.bind(inst, prop, key)
+        if not enabled then return end
+        if prop == "BackgroundColor3" then
+            if FILL[key] ~= nil then
+                watch(inst, "BackgroundTransparency", key)
+            elseif key == "Accent" and inst.ClassName == "Frame" then
+                accentPending[inst] = true
+                task.defer(addAccent, inst)
+            end
+        elseif prop == "Color" and key == "Outline" and inst:IsA("UIStroke") then
+            watch(inst, "Transparency", "Stroke")
+        end
+    end
+    -- module A: a gradient of tokens colours its parent (a white surface)
+    function G.gradient(gradient, tokens)
+        if not enabled then return end
+        local key = tokens[1]
+        if FILL[key] == nil then return end
+        task.defer(function()
+            local p = gradient.Parent
+            if p ~= nil and p:IsA("GuiObject") then watch(p, "BackgroundTransparency", key) end
+        end)
+    end
+    -- a Frame whose accent colour is set by hand (the toggle fill)
+    function G.accent(frame)
+        if not enabled or frame == nil then return end
+        accentPending[frame] = true
+        task.defer(addAccent, frame)
+    end
+    -- the menu tweener: map a target the module code wrote for an opaque surface
+    function G.tween(inst, props)
+        local key = enabled and keyOf[inst] or nil
+        if key == nil then return props, nil end
+        local prop = propOf[inst]
+        local v = props[prop]
+        if type(v) ~= "number" then return props, nil end
+        local k = factor(inst, key)
+        if k == nil then return props, nil end
+        local w = written[inst]
+        if not (w ~= nil and math.abs(v - w) < 1e-3) then v = map(k, v) end
+        local out = table.clone(props)
+        out[prop] = v
+        written[inst] = v
+        return out, inst
+    end
+    function G.hold(inst, tween)
+        busy[inst] = tween
+        tween.Completed:Once(function()
+            if busy[inst] == tween then busy[inst] = nil end
+        end)
+    end
+    -- the Classic menu's three ScreenGuis
+    function G.attach(trove, win, hud, pop)
+        if not enabled then return end
+        for gui, name in { [win] = "win", [hud] = "hud", [pop] = "pop" } do
+            layers[gui] = name
+            trove:Connect(gui.DescendantAdded, onAdded)
+        end
+        trove:Add(function()
+            layers[win], layers[hud], layers[pop] = nil, nil, nil
+        end)
+    end
+    -- a subtree drawn as another layer (a dialog over the window is a popup)
+    function G.pin(root, name)
+        if enabled and root ~= nil then pinned[root] = name end
+    end
+    local function same(a, b)
+        return math.abs(a.R - b.R) < 0.003 and math.abs(a.G - b.G) < 0.003 and math.abs(a.B - b.B) < 0.003
+    end
+    function G.migrate(key, c)
+        if not enabled or typeof(c) ~= "Color3" then return c end
+        local o, n = OLD[key], GLASS[key]
+        if o ~= nil and n ~= nil and same(o, c) then return n end
+        return c
+    end
+    -- the blur behind the window (as Lite makes it); off while the window is hidden, made again on a new camera
+    function G.acrylic(trove, frame, radius)
+        if not enabled or env.KiciaClassicAcrylic == false or K.StarlightAcrylic == nil then return end
+        local st = { dead = false, paint = nil }
+        local function make()
+            pcall(function()
+                local acr = K._liteAcrylic
+                if acr == nil then
+                    acr = K.StarlightAcrylic()
+                    pcall(acr.Init)
+                    K._liteAcrylic = acr
+                end
+                -- Init clones the game's DepthOfField, which can be off (as in Rivals): near-field blur only
+                local blur = game:GetService("Lighting"):FindFirstChild("starlightBlur")
+                if blur ~= nil then
+                    blur.Enabled = true
+                    blur.FarIntensity = 0
+                    blur.NearIntensity = 1
+                end
+                local paint = acr.AcrylicPaint()
+                if paint.Model == nil then
+                    paint.Frame:Destroy()
+                    return
+                end
+                for _, d in paint.Frame:GetDescendants() do
+                    if d:IsA("UICorner") then d.CornerRadius = UDim.new(0, radius) end
+                end
+                local shadow = paint.Frame:FindFirstChild("shadow")
+                if shadow ~= nil then shadow.Visible = false end
+                paint.AddParent(frame)
+                paint.Frame.Parent = frame
+                paint.Model.Size = Vector3.new(1.0, 1.032, 0.001)
+                st.paint = paint
+            end)
+        end
+        make()
+        trove:Add(function()
+            st.dead = true
+            local p = st.paint
+            st.paint = nil
+            if p ~= nil then
+                pcall(function() p.Model:Destroy() end)
+                pcall(function() p.Frame:Destroy() end)
+            end
+        end)
+        trove:Add(task.spawn(function()
+            while not st.dead do
+                task.wait(0.5)
+                local p = st.paint
+                if not st.dead and p ~= nil and not p.Model:IsDescendantOf(workspace) then
+                    pcall(function() p.Frame:Destroy() end)
+                    st.paint = nil
+                    K._liteAcrylic = nil
+                    make()
+                end
+            end
+        end))
+    end
+    return G
+end)()
 --  Kicia's own modules, lifted from the dump (extract.py). Do not edit by hand.
 do -- a
 local function fn35()
@@ -16118,7 +16403,7 @@ return r.c
 end
 end
 do -- s
-local function fn35()return table.freeze({Medium=Font.new("rbxassetid://12187365364",Enum.FontWeight.Medium,Enum.FontStyle.Normal),SemiBold=Font.new("rbxassetid://12187365364",Enum.FontWeight.SemiBold,Enum.FontStyle.Normal),Bold=Font.new("rbxassetid://12187365364",Enum.FontWeight.Bold,Enum.FontStyle.Normal)});end
+local function fn35()return table.freeze(K.ClassicGlass.Fonts or {Medium=Font.new("rbxassetid://12187365364",Enum.FontWeight.Medium,Enum.FontStyle.Normal),SemiBold=Font.new("rbxassetid://12187365364",Enum.FontWeight.SemiBold,Enum.FontStyle.Normal),Bold=Font.new("rbxassetid://12187365364",Enum.FontWeight.Bold,Enum.FontStyle.Normal)});end
 
 tbl17.s = function()
 local s = tbl17.cache.s
@@ -16272,7 +16557,8 @@ return y.c
 end
 end
 do -- z
-local function fn35()return{Accent=Color3.fromRGB(154,213,222),Outline=Color3.fromRGB(24,25,24),Background=Color3.fromRGB(0,0,0),ElementBackground=Color3.fromRGB(6,6,6),TabButtonSelected=Color3.fromRGB(51,65,70),Unselected=Color3.fromRGB(75,72,72),TextColor=Color3.fromRGB(197,197,197),ToggleCircleUnselected=Color3.fromRGB(70,85,87),ToggleBackgroundUnselected=Color3.fromRGB(12,13,13),GradientTop=Color3.fromRGB(14,16,16),GradientMid=Color3.fromRGB(6,6,6),GradientDark=Color3.fromRGB(3,3,3),GradientDeep=Color3.fromRGB(0,0,0),TabHighlight=Color3.fromRGB(51,65,70),TabShadow=Color3.fromRGB(30,51,61)};end
+-- (frost glass) the palette lives in K.ClassicGlass; a copy, since refresh writes into it
+local function fn35()return table.clone(K.ClassicGlass.Palette);end
 
 tbl17.z = function()
 local z = tbl17.cache.z
@@ -16338,6 +16624,7 @@ end
 
 index2.Bind = function(arg, arg2, arg3, arg4)
 arg2[arg3] = v115[arg4]
+K.ClassicGlass.bind(arg2, arg3, arg4)
 local tbl20 = arg._propBindingsByToken[arg4]
 
 if tbl20 == nil then
@@ -16351,6 +16638,7 @@ end
 
 index2.BindGradient = function(arg, arg2, arg3, arg4)
 arg2.Color = fn36(arg3, arg4)
+K.ClassicGlass.gradient(arg2, arg3)
 table.insert(arg._gradients, { Gradient = arg2, Tokens = arg3, Times = arg4 })
 
 for _, v116 in arg3, nil, nil do
@@ -17381,7 +17669,7 @@ local uiStroke = Instance.new("UIStroke")
 uiStroke.LineJoinMode = Enum.LineJoinMode.Round
 uiStroke.BorderOffset = UDim.new(0, i)
 uiStroke.Transparency = 1 - (v86[63] - i / (amount + dampingFactor)) * (v86[63] - dampingFactor)
-arg:Bind(uiStroke, "Color", "Outline")
+arg:Bind(uiStroke, "Color", arg2.Token or "Outline")
 uiStroke.Parent = parent
 end
 end,
@@ -21094,6 +21382,7 @@ instance3.BorderSizePixel = 0
 instance3.BackgroundColor3 = v117.get("Accent")
 instance3.BackgroundTransparency = v86[63]
 instance3.Parent = instance
+K.ClassicGlass.accent(instance3)
 local uiCorner2 = Instance.new("UICorner")
 uiCorner2.CornerRadius = UDim.new(1, v86[186])
 uiCorner2.Parent = instance3
@@ -22417,7 +22706,7 @@ uiGradient.Rotation = 90
 v115.bindSurfaceGradient(arg, uiGradient, { "GradientMid", v86[70] })
 uiGradient.Parent = frame
 local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 6)
+uiCorner.CornerRadius = UDim.new(0, K.ClassicGlass.SectionRadius)
 uiCorner.Parent = frame
 local instance = Instance.new(v86[85])
 arg:Bind(instance, v86[27], "Outline")
@@ -25719,6 +26008,7 @@ canvasGroup.Active = v86[34]
 canvasGroup.ClipsDescendants = v86[34]
 canvasGroup.Parent = arg:GetOverlayLayer()
 v126:Add(canvasGroup)
+K.ClassicGlass.pin(canvasGroup, "pop")
 local instance = Instance.new(v86[128])
 instance.Size = UDim2.fromScale(1, 1)
 instance.BorderSizePixel = 0
@@ -29878,6 +30168,8 @@ instance.Size = UDim2.fromScale(1, v86[63])
 instance.BorderSizePixel = v86[186]
 instance.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 instance.Parent = frame
+-- (frost glass) no rail surface of its own: square corners would stick out of the round window
+instance.Visible = not K.ClassicGlass.Enabled
 local uiGradient = Instance.new("UIGradient")
 uiGradient.Rotation = 90
 v115.bindSurfaceGradient(arg3, uiGradient, { v86[134], "GradientMid", "GradientDark" })
@@ -29887,6 +30179,7 @@ frame2.BackgroundColor3 = Color3.fromRGB(255, 255, v86[108])
 frame2.Size = UDim2.new(1, v86[186], 0, rail.HeaderHeight)
 frame2.BorderSizePixel = 0
 frame2.Parent = frame
+if K.ClassicGlass.Enabled then frame2.BackgroundTransparency = 1 end
 local instance2 = Instance.new(v86[46])
 instance2.Rotation = 90
 v115.bindSurfaceGradient(arg3, instance2, { "GradientTop", v86[187], "GradientDark" })
@@ -29971,7 +30264,7 @@ instance5.Rotation = v86[45]
 arg3:BindGradient(instance5, { "TabHighlight", "TabButtonSelected", v86[191] }, { 0, 0.5, 1 })
 instance5.Parent = frame5
 local instance6 = Instance.new(v86[98])
-instance6.CornerRadius = UDim.new(0, 6)
+instance6.CornerRadius = UDim.new(0, K.ClassicGlass.BubbleRadius)
 instance6.Parent = frame5
 v117.attachOverflowCues(arg2, arg3, instance3, frame, v86[197])
 
@@ -30434,11 +30727,15 @@ end
 end
 
 index2.Play = function(arg, arg2, arg3, arg4)
+-- (frost glass) a transparency target on a glass surface is mapped, and the layer leaves it alone while it plays
+local glass, held = K.ClassicGlass, nil
+arg3, held = glass.tween(arg2, arg3)
 if not arg._live then
 arg:Snap(arg2, arg3)
 return nil
 end
 local tween = tweenService:Create(arg2, arg4 or TweenInfo.new(arg.Speed, arg.EasingStyle, arg.EasingDirection, 0, false, 0), arg3)
+if held ~= nil then glass.hold(held, tween) end
 tween:Play()
 return tween
 end
@@ -30934,7 +31231,7 @@ local instance2 = Instance.new(v86[85])
 instance2.Transparency = v86[84]
 v125:Bind(instance2, v86[27], "Outline")
 instance2.Parent = frame
-v115.addGlow(v125, frame, { Amount = 5, DampingFactor = v86[84] })
+v115.addGlow(v125, frame, { Amount = 5, DampingFactor = v86[84], Token = K.ClassicGlass.Enabled and "Shadow" or nil })
 local size = frame.Size
 local stateData = arg:GetStateData()
 local size2 = stateData and stateData.Size
@@ -30961,7 +31258,7 @@ frame.Size = size
 frame.AnchorPoint = Vector2.new(0, 0)
 frame.Position = udim2
 local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 6)
+uiCorner.CornerRadius = UDim.new(0, K.ClassicGlass.WindowRadius)
 uiCorner.Parent = frame
 local instance3 = Instance.new(v86[128])
 instance3.Position = UDim2.new(0, 0, 1, -8)
@@ -30969,6 +31266,8 @@ instance3.Size = UDim2.new(1, v86[186], 0, 8)
 instance3.BorderSizePixel = 0
 instance3.BackgroundColor3 = Color3.fromRGB(v86[108], 255, v86[108])
 instance3.Parent = frame
+-- (frost glass) this opaque bottom band would read as a dark stripe across the glass
+instance3.Visible = not K.ClassicGlass.Enabled
 local uiGradient = Instance.new("UIGradient")
 uiGradient.Rotation = v86[45]
 v125:BindGradient(uiGradient, { "Background", "GradientDeep" })
@@ -31046,6 +31345,9 @@ ActiveTab = nil,
 _modalButton = instance,
 _menuOpenPosition = udim2,
 }, index2)
+
+-- (frost glass) blur the game behind the window
+K.ClassicGlass.acrylic(v124, frame, K.ClassicGlass.WindowRadius)
 
 v124:Connect(arg:MakeDraggable(frame, v124, { OnDragEnd = function(arg4)
 fn36(arg, arg4)
@@ -32180,6 +32482,8 @@ else
 v125 = v124
 end
 
+-- (frost glass) a saved colour still equal to the old default was never picked by the user
+v125 = K.ClassicGlass.migrate(v123.Key, v125)
 fn40(v123.Key, v125)
 
 local v126 = v122:AddColor({
@@ -32200,6 +32504,7 @@ arg3:Connect(config:Changed(v119.appendPath(arg5, v123.Key)), function(arg6)
 if typeof(arg6) ~= "Color3" then
 return
 end
+arg6 = K.ClassicGlass.migrate(v123.Key, arg6)
 fn40(v123.Key, arg6)
 v126:Set({ Rgb = arg6, Alpha = 1 }, true)
 end)
@@ -32416,6 +32721,8 @@ end
 local v137 = createScreenGui(v86[45], v86[34])
 local v138 = createScreenGui(v86[91], true)
 local v139 = createScreenGui(110, false)
+-- (frost glass) window / hud / popup layers
+K.ClassicGlass.attach(v136, v138, v137, v139)
 local v140 = v136:Add(v127.new())
 local v141 = v122.new(v136, v139, v140)
 local Default = semiBold
